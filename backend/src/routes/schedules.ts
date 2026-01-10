@@ -7,7 +7,7 @@ import { ApplianceAction } from '../types/nature';
 const router = Router();
 
 interface CreateScheduleBody {
-  name: string;
+  name?: string;
   applianceId: string;
   applianceName: string;
   applianceType: string;
@@ -53,7 +53,7 @@ router.post('/schedules', async (req: Request, res: Response) => {
   try {
     const body: CreateScheduleBody = req.body;
 
-    if (!body.name || !body.applianceId || !body.action || !body.scheduleType) {
+    if (!body.applianceId || !body.action || !body.scheduleType) {
       res.status(400).json({ error: 'Missing required fields' });
       return;
     }
@@ -70,7 +70,7 @@ router.post('/schedules', async (req: Request, res: Response) => {
 
     const scheduleRepository = AppDataSource.getRepository(Schedule);
     const schedule = new Schedule();
-    schedule.name = body.name;
+    schedule.name = body.name || null;
     schedule.applianceId = body.applianceId;
     schedule.applianceName = body.applianceName;
     schedule.applianceType = body.applianceType;
@@ -104,7 +104,7 @@ router.put('/schedules/:id', async (req: Request, res: Response) => {
 
     const body: Partial<CreateScheduleBody> = req.body;
 
-    if (body.name !== undefined) schedule.name = body.name;
+    if (body.name !== undefined) schedule.name = body.name || null;
     if (body.applianceId !== undefined) schedule.applianceId = body.applianceId;
     if (body.applianceName !== undefined) schedule.applianceName = body.applianceName;
     if (body.applianceType !== undefined) schedule.applianceType = body.applianceType;

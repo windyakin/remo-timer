@@ -185,7 +185,6 @@ const buildExecuteAt = (): string | undefined => {
 };
 
 const isValid = computed(() => {
-  if (!name.value.trim()) return false;
   if (!selectedAppliance.value) return false;
   if (!executeTime.value) return false;
 
@@ -261,7 +260,7 @@ onMounted(async () => {
       <template #content>
         <form @submit.prevent="save" class="form">
           <div class="form-section">
-            <label>スケジュール名</label>
+            <label>スケジュール名 <span class="optional">(任意)</span></label>
             <InputText
               v-model="name"
               placeholder="例: 朝のエアコンON"
@@ -413,5 +412,11 @@ onMounted(async () => {
 
 .w-full {
   width: 100%;
+}
+
+.optional {
+  font-weight: normal;
+  color: #9ca3af;
+  font-size: 0.875rem;
 }
 </style>

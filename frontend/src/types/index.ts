@@ -99,7 +99,7 @@ export type ScheduleType = 'once' | 'recurring';
 
 export interface Schedule {
   id: number;
-  name: string;
+  name: string | null;
   applianceId: string;
   applianceName: string;
   applianceType: string;
@@ -114,8 +114,11 @@ export interface Schedule {
 
 export interface ExecutionLog {
   id: number;
-  scheduleId: number;
-  schedule?: Schedule;
+  scheduleId: number | null;
+  schedule?: Schedule | null;
+  scheduleName: string | null;
+  applianceName: string | null;
+  applianceType: string | null;
   executedAt: string;
   status: 'success' | 'failed';
   response: object | null;

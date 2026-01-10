@@ -3,7 +3,7 @@ import { Schedule } from '../entities/Schedule';
 import { ExecutionLog } from '../entities/ExecutionLog';
 import { AppDataSource } from '../config/database';
 import { natureApiService } from './NatureApiService';
-import { LessThanOrEqual, MoreThan } from 'typeorm';
+import { LessThanOrEqual } from 'typeorm';
 
 export class SchedulerService {
   private jobs: Map<number, ScheduledTask> = new Map();
@@ -44,8 +44,9 @@ export class SchedulerService {
     });
 
     this.jobs.set(schedule.id, job);
+    const displayName = schedule.name || schedule.applianceName;
     console.log(
-      `Added recurring schedule: ${schedule.name} (${schedule.cronExpression})`
+      `Added recurring schedule: ${displayName} (${schedule.cronExpression})`
     );
   }
 
@@ -55,22 +56,24 @@ export class SchedulerService {
     const now = new Date();
     const executeTime = new Date(schedule.executeAt);
     const delay = executeTime.getTime() - now.getTime();
+    const displayName = schedule.name || schedule.applianceName;
 
     if (delay <= 0) {
       console.log(
-        `One-time schedule ${schedule.name} is in the past, skipping...`
+        `One-time schedule ${displayName} is in the past, deleting...`
       );
+      this.deleteOneTimeSchedule(schedule.id);
       return;
     }
 
     const timeout = setTimeout(async () => {
       await this.executeSchedule(schedule);
-      await this.disableSchedule(schedule.id);
+      await this.deleteOneTimeSchedule(schedule.id);
     }, delay);
 
     this.oneTimeTimeouts.set(schedule.id, timeout);
     console.log(
-      `Added one-time schedule: ${schedule.name} (${executeTime.toISOString()})`
+      `Added one-time schedule: ${displayName} (${executeTime.toISOString()})`
     );
   }
 
@@ -92,43 +95,51 @@ export class SchedulerService {
     const logRepository = AppDataSource.getRepository(ExecutionLog);
     const log = new ExecutionLog();
     log.scheduleId = schedule.id;
+    log.scheduleName = schedule.name;
+    log.applianceName = schedule.applianceName;
+    log.applianceType = schedule.applianceType;
+
+    const displayName = schedule.name || schedule.applianceName;
 
     try {
-      console.log(`Executing schedule: ${schedule.name}`);
+      console.log(`Executing schedule: ${displayName}`);
       await natureApiService.executeAction(schedule.applianceId, schedule.action);
 
       log.status = 'success';
       log.response = { message: 'Action executed successfully' };
-      console.log(`Schedule ${schedule.name} executed successfully`);
+      console.log(`Schedule ${displayName} executed successfully`);
     } catch (error) {
       log.status = 'failed';
       log.errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
-      console.error(`Schedule ${schedule.name} failed:`, log.errorMessage);
+      console.error(`Schedule ${displayName} failed:`, log.errorMessage);
     }
 
     await logRepository.save(log);
   }
 
-  private async disableSchedule(scheduleId: number): Promise<void> {
+  private async deleteOneTimeSchedule(scheduleId: number): Promise<void> {
     const scheduleRepository = AppDataSource.getRepository(Schedule);
-    await scheduleRepository.update(scheduleId, { isEnabled: false });
     this.removeSchedule(scheduleId);
-    console.log(`Disabled one-time schedule: ${scheduleId}`);
+    await scheduleRepository.delete(scheduleId);
+    console.log(`Deleted one-time schedule: ${scheduleId}`);
   }
 
   async cleanupExpiredOneTimeSchedules(): Promise<void> {
     const scheduleRepository = AppDataSource.getRepository(Schedule);
     const now = new Date();
 
-    await scheduleRepository.update(
-      {
+    // 期限切れの一度きりスケジュールを削除
+    const expiredSchedules = await scheduleRepository.find({
+      where: {
         scheduleType: 'once',
         executeAt: LessThanOrEqual(now),
-        isEnabled: true,
       },
-      { isEnabled: false }
-    );
+    });
+
+    for (const schedule of expiredSchedules) {
+      await this.deleteOneTimeSchedule(schedule.id);
+    }
   }
 
   getActiveJobsCount(): number {

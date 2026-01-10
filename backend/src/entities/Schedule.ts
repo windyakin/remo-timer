@@ -16,8 +16,8 @@ export class Schedule {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'varchar', length: 255 })
-  name: string;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  name: string | null;
 
   @Column({ name: 'appliance_id', type: 'varchar', length: 255 })
   applianceId: string;

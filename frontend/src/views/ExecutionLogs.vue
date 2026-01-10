@@ -46,6 +46,43 @@ const formatDate = (dateString: string): string => {
   return new Date(dateString).toLocaleString('ja-JP');
 };
 
+const getLogDisplayName = (log: ExecutionLog): string => {
+  // ログに保存された名前を優先
+  if (log.scheduleName) {
+    return log.scheduleName;
+  }
+  if (log.applianceName) {
+    return log.applianceName;
+  }
+  // フォールバック: スケジュールが残っている場合
+  if (log.schedule) {
+    return log.schedule.name || log.schedule.applianceName;
+  }
+  return '削除済みスケジュール';
+};
+
+const getApplianceTypeLabel = (type: string | null): string => {
+  if (!type) return '-';
+  const labels: Record<string, string> = {
+    AC: 'エアコン',
+    TV: 'テレビ',
+    LIGHT: '照明',
+    IR: '赤外線',
+  };
+  return labels[type] || type;
+};
+
+const getApplianceTypeSeverity = (type: string | null): string => {
+  if (!type) return 'secondary';
+  const severities: Record<string, string> = {
+    AC: 'info',
+    TV: 'success',
+    LIGHT: 'warn',
+    IR: 'secondary',
+  };
+  return severities[type] || 'secondary';
+};
+
 onMounted(loadLogs);
 </script>
 
@@ -80,7 +117,20 @@ onMounted(loadLogs);
           </Column>
           <Column header="スケジュール">
             <template #body="{ data }">
-              {{ data.schedule?.name || `ID: ${data.scheduleId}` }}
+              {{ getLogDisplayName(data) }}
+            </template>
+          </Column>
+          <Column header="種類" style="width: 100px">
+            <template #body="{ data }">
+              <Tag
+                :value="getApplianceTypeLabel(data.applianceType)"
+                :severity="getApplianceTypeSeverity(data.applianceType)"
+              />
+            </template>
+          </Column>
+          <Column header="デバイス">
+            <template #body="{ data }">
+              {{ data.applianceName || '-' }}
             </template>
           </Column>
           <Column header="ステータス" style="width: 100px">
