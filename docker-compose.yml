@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nature-timer-db
+    environment:
+      POSTGRES_USER: nature_timer
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: nature_timer
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nature_timer -d nature_timer"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
