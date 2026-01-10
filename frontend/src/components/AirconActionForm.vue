@@ -3,6 +3,11 @@ import { computed } from 'vue';
 import Select from 'primevue/select';
 import SelectButton from 'primevue/selectbutton';
 import type { NatureAppliance, AirconAction } from '@/types';
+import {
+  getAirconModeLabel,
+  getAirconVolumeLabel,
+  getAirconDirectionLabel,
+} from '@/utils/labels';
 
 const props = defineProps<{
   appliance: NatureAppliance;
@@ -21,7 +26,7 @@ const action = computed({
 const airconModes = computed(() => {
   if (!props.appliance.aircon?.range.modes) return [];
   return Object.keys(props.appliance.aircon.range.modes).map((mode) => ({
-    label: getModeLabel(mode),
+    label: getAirconModeLabel(mode),
     value: mode,
   }));
 });
@@ -39,7 +44,7 @@ const volumes = computed(() => {
   const mode = action.value.operation_mode;
   if (!mode || !props.appliance.aircon?.range.modes[mode]) return [];
   return props.appliance.aircon.range.modes[mode].vol.map((v) => ({
-    label: getVolumeLabel(v),
+    label: getAirconVolumeLabel(v),
     value: v,
   }));
 });
@@ -48,7 +53,7 @@ const directions = computed(() => {
   const mode = action.value.operation_mode;
   if (!mode || !props.appliance.aircon?.range.modes[mode]) return [];
   return props.appliance.aircon.range.modes[mode].dir.map((d) => ({
-    label: getDirectionLabel(d),
+    label: getAirconDirectionLabel(d),
     value: d,
   }));
 });
@@ -57,41 +62,6 @@ const powerButtons = [
   { label: '電源ON', value: '' },
   { label: '電源OFF', value: 'power-off' },
 ];
-
-const getModeLabel = (mode: string): string => {
-  const labels: Record<string, string> = {
-    auto: '自動',
-    cool: '冷房',
-    warm: '暖房',
-    dry: '除湿',
-    blow: '送風',
-  };
-  return labels[mode] || mode;
-};
-
-const getVolumeLabel = (vol: string): string => {
-  const labels: Record<string, string> = {
-    auto: '自動',
-    '1': '1',
-    '2': '2',
-    '3': '3',
-    '4': '4',
-  };
-  return labels[vol] || vol;
-};
-
-const getDirectionLabel = (dir: string): string => {
-  const labels: Record<string, string> = {
-    auto: '自動',
-    swing: 'スイング',
-    '1': '1',
-    '2': '2',
-    '3': '3',
-    '4': '4',
-    '5': '5',
-  };
-  return labels[dir] || dir;
-};
 
 const updateAction = (field: keyof AirconAction, value: string | undefined) => {
   emit('update:modelValue', { ...action.value, [field]: value });

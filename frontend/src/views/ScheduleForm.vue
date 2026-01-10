@@ -18,6 +18,7 @@ import type {
   ApplianceAction,
   AirconAction,
 } from '@/types';
+import { getApplianceTypeLabel } from '@/utils/labels';
 
 const router = useRouter();
 const route = useRoute();
@@ -62,16 +63,6 @@ const applianceOptions = computed(() =>
   }))
 );
 
-const getApplianceTypeLabel = (type: string): string => {
-  const labels: Record<string, string> = {
-    AC: 'エアコン',
-    TV: 'テレビ',
-    LIGHT: '照明',
-    IR: '赤外線',
-  };
-  return labels[type] || type;
-};
-
 const loadAppliances = async () => {
   try {
     appliances.value = await api.getAppliances();
@@ -91,7 +82,7 @@ const loadSchedule = async () => {
   loading.value = true;
   try {
     const schedule = await api.getSchedule(scheduleId.value);
-    name.value = schedule.name;
+    name.value = schedule.name || '';
     scheduleType.value = schedule.scheduleType;
     action.value = schedule.action;
 
