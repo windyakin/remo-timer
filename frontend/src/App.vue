@@ -6,10 +6,12 @@ import ConfirmDialog from 'primevue/confirmdialog';
 </script>
 
 <template>
-  <div class="app">
+  <div class="app min-h-screen">
     <AppHeader />
     <main class="main-content">
-      <RouterView />
+      <div class="container px-3 py-4 md:px-4 lg:px-5">
+        <RouterView />
+      </div>
     </main>
     <Toast position="top-right" />
     <ConfirmDialog />
@@ -30,13 +32,8 @@ body {
   min-height: 100vh;
 }
 
-.app {
-  min-height: 100vh;
-}
-
-.main-content {
+.container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 24px;
 }
 </style>
