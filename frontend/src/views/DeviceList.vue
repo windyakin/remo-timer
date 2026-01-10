@@ -2,12 +2,15 @@
 import { ref, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import Card from 'primevue/card';
-import DataTable from 'primevue/datatable';
-import Column from 'primevue/column';
 import Tag from 'primevue/tag';
 import Button from 'primevue/button';
 import { api } from '@/services/api';
 import type { NatureAppliance } from '@/types';
+import {
+  getApplianceTypeLabel,
+  getApplianceTypeSeverity,
+  getAirconModeLabel,
+} from '@/utils/labels';
 
 const toast = useToast();
 
@@ -30,37 +33,20 @@ const loadAppliances = async () => {
   }
 };
 
-const getApplianceTypeLabel = (type: string): string => {
-  const labels: Record<string, string> = {
-    AC: 'エアコン',
-    TV: 'テレビ',
-    LIGHT: '照明',
-    IR: '赤外線',
-  };
-  return labels[type] || type;
-};
-
-const getApplianceTypeSeverity = (type: string): string => {
-  const severities: Record<string, string> = {
-    AC: 'info',
-    TV: 'success',
-    LIGHT: 'warn',
-    IR: 'secondary',
-  };
-  return severities[type] || 'secondary';
-};
-
 const formatAirconSettings = (appliance: NatureAppliance): string => {
   if (appliance.type !== 'AC' || !appliance.settings) return '-';
   const { mode, temp, vol } = appliance.settings;
-  const modeLabels: Record<string, string> = {
-    auto: '自動',
-    cool: '冷房',
-    warm: '暖房',
-    dry: '除湿',
-    blow: '送風',
-  };
-  return `${modeLabels[mode] || mode} ${temp}° 風量:${vol}`;
+  return `${getAirconModeLabel(mode)} ${temp}° 風量:${vol}`;
+};
+
+const getCurrentState = (appliance: NatureAppliance): string => {
+  if (appliance.type === 'AC') {
+    return formatAirconSettings(appliance);
+  }
+  if (appliance.type === 'LIGHT' && appliance.light) {
+    return appliance.light.state.power === 'on' ? '点灯' : '消灯';
+  }
+  return '-';
 };
 
 onMounted(loadAppliances);
@@ -70,66 +56,68 @@ onMounted(loadAppliances);
   <div class="device-list">
     <Card>
       <template #title>
-        <div class="card-header">
+        <div class="flex align-items-center justify-content-between">
           <span>デバイス一覧</span>
           <Button
             icon="pi pi-refresh"
             severity="secondary"
             text
             rounded
+            size="small"
             @click="loadAppliances"
             :loading="loading"
           />
         </div>
       </template>
       <template #content>
-        <DataTable
-          :value="appliances"
-          :loading="loading"
-          stripedRows
-          responsiveLayout="scroll"
-          emptyMessage="デバイスがありません"
-        >
-          <Column field="nickname" header="名前" sortable />
-          <Column field="type" header="種類" style="width: 120px">
-            <template #body="{ data }">
-              <Tag
-                :value="getApplianceTypeLabel(data.type)"
-                :severity="getApplianceTypeSeverity(data.type)"
-              />
-            </template>
-          </Column>
-          <Column header="現在の設定">
-            <template #body="{ data }">
-              <span v-if="data.type === 'AC'">
-                {{ formatAirconSettings(data) }}
-              </span>
-              <span v-else-if="data.type === 'LIGHT' && data.light">
-                {{ data.light.state.power === 'on' ? '点灯' : '消灯' }}
-              </span>
-              <span v-else>-</span>
-            </template>
-          </Column>
-          <Column header="信号数" style="width: 100px">
-            <template #body="{ data }">
-              {{ data.signals?.length || 0 }}
-            </template>
-          </Column>
-          <Column header="Nature Remo">
-            <template #body="{ data }">
-              {{ data.device?.name || '-' }}
-            </template>
-          </Column>
-        </DataTable>
+        <div v-if="loading" class="text-center py-4">
+          <i class="pi pi-spin pi-spinner text-2xl"></i>
+        </div>
+        <div v-else-if="appliances.length === 0" class="text-center py-4 text-color-secondary">
+          デバイスがありません
+        </div>
+        <div v-else class="grid">
+          <div
+            v-for="appliance in appliances"
+            :key="appliance.id"
+            class="col-12 md:col-6 lg:col-4"
+          >
+            <div class="surface-card border-round p-3 shadow-1 h-full">
+              <div class="flex align-items-center justify-content-between mb-3">
+                <div class="font-semibold text-lg">{{ appliance.nickname }}</div>
+                <Tag
+                  :value="getApplianceTypeLabel(appliance.type)"
+                  :severity="getApplianceTypeSeverity(appliance.type)"
+                />
+              </div>
+              <div class="flex flex-column gap-2 text-sm">
+                <div class="flex align-items-center gap-2">
+                  <i class="pi pi-cog text-color-secondary" style="width: 1rem;"></i>
+                  <span>{{ getCurrentState(appliance) }}</span>
+                </div>
+                <div class="flex align-items-center gap-2">
+                  <i class="pi pi-wifi text-color-secondary" style="width: 1rem;"></i>
+                  <span>{{ appliance.device?.name || '-' }}</span>
+                </div>
+                <div v-if="appliance.signals?.length > 0" class="flex align-items-center gap-2">
+                  <i class="pi pi-send text-color-secondary" style="width: 1rem;"></i>
+                  <span>カスタム信号: {{ appliance.signals.length }}件</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </template>
     </Card>
   </div>
 </template>
 
 <style scoped>
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.grid {
+  margin: -0.5rem;
+}
+
+.grid > [class*='col'] {
+  padding: 0.5rem;
 }
 </style>

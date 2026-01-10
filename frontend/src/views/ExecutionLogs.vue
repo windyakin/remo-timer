@@ -2,13 +2,15 @@
 import { ref, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import Card from 'primevue/card';
-import DataTable from 'primevue/datatable';
-import Column from 'primevue/column';
 import Tag from 'primevue/tag';
 import Button from 'primevue/button';
 import Paginator from 'primevue/paginator';
 import { api } from '@/services/api';
 import type { ExecutionLog } from '@/types';
+import {
+  getApplianceTypeLabel,
+  getApplianceTypeSeverity,
+} from '@/utils/labels';
 
 const toast = useToast();
 
@@ -61,28 +63,6 @@ const getLogDisplayName = (log: ExecutionLog): string => {
   return '削除済みスケジュール';
 };
 
-const getApplianceTypeLabel = (type: string | null): string => {
-  if (!type) return '-';
-  const labels: Record<string, string> = {
-    AC: 'エアコン',
-    TV: 'テレビ',
-    LIGHT: '照明',
-    IR: '赤外線',
-  };
-  return labels[type] || type;
-};
-
-const getApplianceTypeSeverity = (type: string | null): string => {
-  if (!type) return 'secondary';
-  const severities: Record<string, string> = {
-    AC: 'info',
-    TV: 'success',
-    LIGHT: 'warn',
-    IR: 'secondary',
-  };
-  return severities[type] || 'secondary';
-};
-
 onMounted(loadLogs);
 </script>
 
@@ -90,66 +70,64 @@ onMounted(loadLogs);
   <div class="execution-logs">
     <Card>
       <template #title>
-        <div class="card-header">
+        <div class="flex align-items-center justify-content-between">
           <span>実行履歴</span>
           <Button
             icon="pi pi-refresh"
             severity="secondary"
             text
             rounded
+            size="small"
             @click="loadLogs"
             :loading="loading"
           />
         </div>
       </template>
       <template #content>
-        <DataTable
-          :value="logs"
-          :loading="loading"
-          stripedRows
-          responsiveLayout="scroll"
-          emptyMessage="実行履歴がありません"
-        >
-          <Column header="実行日時" style="width: 180px">
-            <template #body="{ data }">
-              {{ formatDate(data.executedAt) }}
-            </template>
-          </Column>
-          <Column header="スケジュール">
-            <template #body="{ data }">
-              {{ getLogDisplayName(data) }}
-            </template>
-          </Column>
-          <Column header="種類" style="width: 100px">
-            <template #body="{ data }">
-              <Tag
-                :value="getApplianceTypeLabel(data.applianceType)"
-                :severity="getApplianceTypeSeverity(data.applianceType)"
-              />
-            </template>
-          </Column>
-          <Column header="デバイス">
-            <template #body="{ data }">
-              {{ data.applianceName || '-' }}
-            </template>
-          </Column>
-          <Column header="ステータス" style="width: 100px">
-            <template #body="{ data }">
-              <Tag
-                :value="data.status === 'success' ? '成功' : '失敗'"
-                :severity="data.status === 'success' ? 'success' : 'danger'"
-              />
-            </template>
-          </Column>
-          <Column header="エラー">
-            <template #body="{ data }">
-              <span v-if="data.errorMessage" class="error-message">
-                {{ data.errorMessage }}
-              </span>
-              <span v-else class="no-error">-</span>
-            </template>
-          </Column>
-        </DataTable>
+        <div v-if="loading" class="text-center py-4">
+          <i class="pi pi-spin pi-spinner text-2xl"></i>
+        </div>
+        <div v-else-if="logs.length === 0" class="text-center py-4 text-color-secondary">
+          実行履歴がありません
+        </div>
+        <div v-else class="flex flex-column gap-3">
+          <div
+            v-for="log in logs"
+            :key="log.id"
+            class="surface-card border-round p-3 shadow-1"
+          >
+            <div class="flex align-items-start justify-content-between gap-3 flex-wrap">
+              <div class="flex-1 min-w-0">
+                <div class="flex align-items-center gap-2 mb-2 flex-wrap">
+                  <Tag
+                    :value="log.status === 'success' ? '成功' : '失敗'"
+                    :severity="log.status === 'success' ? 'success' : 'danger'"
+                  />
+                  <Tag
+                    v-if="log.applianceType"
+                    :value="getApplianceTypeLabel(log.applianceType)"
+                    :severity="getApplianceTypeSeverity(log.applianceType)"
+                  />
+                  <span class="font-semibold">{{ getLogDisplayName(log) }}</span>
+                </div>
+                <div class="flex flex-column gap-1 text-sm">
+                  <div class="flex align-items-center gap-2">
+                    <i class="pi pi-clock text-color-secondary" style="width: 1rem;"></i>
+                    <span>{{ formatDate(log.executedAt) }}</span>
+                  </div>
+                  <div v-if="log.applianceName" class="flex align-items-center gap-2">
+                    <i class="pi pi-box text-color-secondary" style="width: 1rem;"></i>
+                    <span>{{ log.applianceName }}</span>
+                  </div>
+                  <div v-if="log.errorMessage" class="flex align-items-start gap-2 text-red-500">
+                    <i class="pi pi-exclamation-circle" style="width: 1rem; margin-top: 2px;"></i>
+                    <span>{{ log.errorMessage }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         <Paginator
           v-if="total > rows"
           :first="first"
@@ -157,25 +135,9 @@ onMounted(loadLogs);
           :totalRecords="total"
           :rowsPerPageOptions="[10, 20, 50]"
           @page="onPageChange"
+          class="mt-4"
         />
       </template>
     </Card>
   </div>
 </template>
-
-<style scoped>
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.error-message {
-  color: #dc2626;
-  font-size: 0.875rem;
-}
-
-.no-error {
-  color: #9ca3af;
-}
-</style>

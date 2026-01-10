@@ -3,8 +3,6 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
-import DataTable from 'primevue/datatable';
-import Column from 'primevue/column';
 import Button from 'primevue/button';
 import ToggleSwitch from 'primevue/toggleswitch';
 import Tag from 'primevue/tag';
@@ -16,6 +14,11 @@ import TabPanels from 'primevue/tabpanels';
 import TabPanel from 'primevue/tabpanel';
 import { api } from '@/services/api';
 import type { Schedule } from '@/types';
+import {
+  formatScheduleAction,
+  getApplianceTypeLabel,
+  getApplianceTypeSeverity,
+} from '@/utils/labels';
 
 const router = useRouter();
 const toast = useToast();
@@ -167,26 +170,6 @@ const parseCronToReadable = (cron: string): string => {
   return `${days.join('・')} ${time}`;
 };
 
-const getApplianceTypeLabel = (type: string): string => {
-  const labels: Record<string, string> = {
-    AC: 'エアコン',
-    TV: 'テレビ',
-    LIGHT: '照明',
-    IR: '赤外線',
-  };
-  return labels[type] || type;
-};
-
-const getApplianceTypeSeverity = (type: string): string => {
-  const severities: Record<string, string> = {
-    AC: 'info',
-    TV: 'success',
-    LIGHT: 'warn',
-    IR: 'secondary',
-  };
-  return severities[type] || 'secondary';
-};
-
 onMounted(loadSchedules);
 </script>
 
@@ -194,11 +177,12 @@ onMounted(loadSchedules);
   <div class="schedule-list">
     <Card>
       <template #title>
-        <div class="card-header">
+        <div class="flex flex-wrap align-items-center justify-content-between gap-2">
           <span>スケジュール一覧</span>
           <Button
             label="新規作成"
             icon="pi pi-plus"
+            size="small"
             @click="router.push('/schedules/new')"
           />
         </div>
@@ -212,7 +196,7 @@ onMounted(loadSchedules);
                 v-if="onceSchedules.length > 0"
                 :value="onceSchedules.length.toString()"
                 severity="secondary"
-                class="tab-count"
+                class="ml-2"
               />
             </Tab>
             <Tab value="recurring">
@@ -221,124 +205,137 @@ onMounted(loadSchedules);
                 v-if="recurringSchedules.length > 0"
                 :value="recurringSchedules.length.toString()"
                 severity="secondary"
-                class="tab-count"
+                class="ml-2"
               />
             </Tab>
           </TabList>
           <TabPanels>
             <TabPanel value="once">
-              <DataTable
-                :value="onceSchedules"
-                :loading="loading"
-                stripedRows
-                responsiveLayout="scroll"
-                :paginator="onceSchedules.length > 10"
-                :rows="10"
-                emptyMessage="一度きりスケジュールがありません"
-              >
-                <Column header="名前">
-                  <template #body="{ data }">
-                    <span :class="{ 'text-muted': !data.name }">
-                      {{ getScheduleDisplayName(data) }}
-                    </span>
-                  </template>
-                </Column>
-                <Column field="applianceType" header="種類" style="width: 100px">
-                  <template #body="{ data }">
-                    <Tag
-                      :value="getApplianceTypeLabel(data.applianceType)"
-                      :severity="getApplianceTypeSeverity(data.applianceType)"
-                    />
-                  </template>
-                </Column>
-                <Column field="applianceName" header="デバイス" />
-                <Column header="実行時刻">
-                  <template #body="{ data }">
-                    {{ formatScheduleTime(data) }}
-                  </template>
-                </Column>
-                <Column header="操作" style="width: 150px">
-                  <template #body="{ data }">
-                    <div class="action-buttons">
-                      <Button
-                        icon="pi pi-pencil"
-                        severity="secondary"
-                        text
-                        rounded
-                        @click="editSchedule(data)"
-                      />
-                      <Button
-                        icon="pi pi-trash"
-                        severity="danger"
-                        text
-                        rounded
-                        @click="deleteSchedule(data)"
-                      />
+              <div v-if="loading" class="text-center py-4">
+                <i class="pi pi-spin pi-spinner text-2xl"></i>
+              </div>
+              <div v-else-if="onceSchedules.length === 0" class="text-center py-4 text-color-secondary">
+                一度きりスケジュールがありません
+              </div>
+              <div v-else class="grid">
+                <div
+                  v-for="schedule in onceSchedules"
+                  :key="schedule.id"
+                  class="col-12 md:col-6 lg:col-4"
+                >
+                  <div class="surface-card border-round p-3 shadow-1 h-full">
+                    <div class="flex align-items-start justify-content-between mb-2">
+                      <div class="flex-1 min-w-0">
+                        <div class="font-semibold mb-1 white-space-nowrap overflow-hidden text-overflow-ellipsis" :class="{ 'text-color-secondary font-italic': !schedule.name }">
+                          {{ getScheduleDisplayName(schedule) }}
+                        </div>
+                        <div class="flex align-items-center gap-2 flex-wrap">
+                          <Tag
+                            :value="getApplianceTypeLabel(schedule.applianceType)"
+                            :severity="getApplianceTypeSeverity(schedule.applianceType)"
+                          />
+                          <span class="text-color-secondary text-sm">{{ schedule.applianceName }}</span>
+                        </div>
+                      </div>
+                      <div class="flex gap-1 flex-shrink-0">
+                        <Button
+                          icon="pi pi-pencil"
+                          severity="secondary"
+                          text
+                          rounded
+                          size="small"
+                          @click="editSchedule(schedule)"
+                        />
+                        <Button
+                          icon="pi pi-trash"
+                          severity="danger"
+                          text
+                          rounded
+                          size="small"
+                          @click="deleteSchedule(schedule)"
+                        />
+                      </div>
                     </div>
-                  </template>
-                </Column>
-              </DataTable>
+                    <div class="flex flex-column gap-2 text-sm mt-3">
+                      <div class="flex align-items-center gap-2">
+                        <i class="pi pi-send text-color-secondary"></i>
+                        <span>{{ formatScheduleAction(schedule) }}</span>
+                      </div>
+                      <div class="flex align-items-center gap-2">
+                        <i class="pi pi-clock text-color-secondary"></i>
+                        <span>{{ formatScheduleTime(schedule) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </TabPanel>
             <TabPanel value="recurring">
-              <DataTable
-                :value="recurringSchedules"
-                :loading="loading"
-                stripedRows
-                responsiveLayout="scroll"
-                :paginator="recurringSchedules.length > 10"
-                :rows="10"
-                emptyMessage="繰り返しスケジュールがありません"
-              >
-                <Column field="isEnabled" header="有効" style="width: 80px">
-                  <template #body="{ data }">
-                    <ToggleSwitch
-                      :modelValue="data.isEnabled"
-                      @update:modelValue="toggleSchedule(data)"
-                    />
-                  </template>
-                </Column>
-                <Column header="名前">
-                  <template #body="{ data }">
-                    <span :class="{ 'text-muted': !data.name }">
-                      {{ getScheduleDisplayName(data) }}
-                    </span>
-                  </template>
-                </Column>
-                <Column field="applianceType" header="種類" style="width: 100px">
-                  <template #body="{ data }">
-                    <Tag
-                      :value="getApplianceTypeLabel(data.applianceType)"
-                      :severity="getApplianceTypeSeverity(data.applianceType)"
-                    />
-                  </template>
-                </Column>
-                <Column field="applianceName" header="デバイス" />
-                <Column header="実行時刻">
-                  <template #body="{ data }">
-                    {{ formatScheduleTime(data) }}
-                  </template>
-                </Column>
-                <Column header="操作" style="width: 150px">
-                  <template #body="{ data }">
-                    <div class="action-buttons">
-                      <Button
-                        icon="pi pi-pencil"
-                        severity="secondary"
-                        text
-                        rounded
-                        @click="editSchedule(data)"
-                      />
-                      <Button
-                        icon="pi pi-trash"
-                        severity="danger"
-                        text
-                        rounded
-                        @click="deleteSchedule(data)"
-                      />
+              <div v-if="loading" class="text-center py-4">
+                <i class="pi pi-spin pi-spinner text-2xl"></i>
+              </div>
+              <div v-else-if="recurringSchedules.length === 0" class="text-center py-4 text-color-secondary">
+                繰り返しスケジュールがありません
+              </div>
+              <div v-else class="grid">
+                <div
+                  v-for="schedule in recurringSchedules"
+                  :key="schedule.id"
+                  class="col-12 md:col-6 lg:col-4"
+                >
+                  <div
+                    class="surface-card border-round p-3 shadow-1 h-full"
+                    :class="{ 'opacity-60': !schedule.isEnabled }"
+                  >
+                    <div class="flex align-items-start justify-content-between mb-2">
+                      <div class="flex align-items-center gap-2 flex-1 min-w-0">
+                        <ToggleSwitch
+                          :modelValue="schedule.isEnabled"
+                          @update:modelValue="toggleSchedule(schedule)"
+                        />
+                        <div class="font-semibold white-space-nowrap overflow-hidden text-overflow-ellipsis" :class="{ 'text-color-secondary font-italic': !schedule.name }">
+                          {{ getScheduleDisplayName(schedule) }}
+                        </div>
+                      </div>
+                      <div class="flex gap-1 flex-shrink-0">
+                        <Button
+                          icon="pi pi-pencil"
+                          severity="secondary"
+                          text
+                          rounded
+                          size="small"
+                          @click="editSchedule(schedule)"
+                        />
+                        <Button
+                          icon="pi pi-trash"
+                          severity="danger"
+                          text
+                          rounded
+                          size="small"
+                          @click="deleteSchedule(schedule)"
+                        />
+                      </div>
                     </div>
-                  </template>
-                </Column>
-              </DataTable>
+                    <div class="flex align-items-center gap-2 mb-2 pl-5">
+                      <Tag
+                        :value="getApplianceTypeLabel(schedule.applianceType)"
+                        :severity="getApplianceTypeSeverity(schedule.applianceType)"
+                      />
+                      <span class="text-color-secondary text-sm">{{ schedule.applianceName }}</span>
+                    </div>
+                    <div class="flex flex-column gap-2 text-sm pl-5">
+                      <div class="flex align-items-center gap-2">
+                        <i class="pi pi-send text-color-secondary"></i>
+                        <span>{{ formatScheduleAction(schedule) }}</span>
+                      </div>
+                      <div class="flex align-items-center gap-2">
+                        <i class="pi pi-clock text-color-secondary"></i>
+                        <span>{{ formatScheduleTime(schedule) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </TabPanel>
           </TabPanels>
         </Tabs>
@@ -348,23 +345,11 @@ onMounted(loadSchedules);
 </template>
 
 <style scoped>
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.grid {
+  margin: -0.5rem;
 }
 
-.action-buttons {
-  display: flex;
-  gap: 4px;
-}
-
-.tab-count {
-  margin-left: 8px;
-}
-
-.text-muted {
-  color: #6b7280;
-  font-style: italic;
+.grid > [class*='col'] {
+  padding: 0.5rem;
 }
 </style>
