@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
 import Button from 'primevue/button';
-import ToggleSwitch from 'primevue/toggleswitch';
 import Tag from 'primevue/tag';
 import Card from 'primevue/card';
 import Tabs from 'primevue/tabs';
@@ -12,13 +11,9 @@ import TabList from 'primevue/tablist';
 import Tab from 'primevue/tab';
 import TabPanels from 'primevue/tabpanels';
 import TabPanel from 'primevue/tabpanel';
+import ScheduleCard from '@/components/ScheduleCard.vue';
 import { api } from '@/services/api';
 import type { Schedule } from '@/types';
-import {
-  formatScheduleAction,
-  getApplianceTypeLabel,
-  getApplianceTypeSeverity,
-} from '@/utils/labels';
 
 const router = useRouter();
 const toast = useToast();
@@ -143,33 +138,6 @@ const deleteSchedule = (schedule: Schedule) => {
   });
 };
 
-const formatScheduleTime = (schedule: Schedule): string => {
-  if (schedule.scheduleType === 'once' && schedule.executeAt) {
-    return new Date(schedule.executeAt).toLocaleString('ja-JP');
-  }
-  if (schedule.scheduleType === 'recurring' && schedule.cronExpression) {
-    return parseCronToReadable(schedule.cronExpression);
-  }
-  return '-';
-};
-
-const parseCronToReadable = (cron: string): string => {
-  // cron: 分 時 日 月 曜日
-  const parts = cron.split(' ');
-  if (parts.length < 5) return cron;
-
-  const [minute, hour, , , dayOfWeek] = parts;
-  const time = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
-
-  if (dayOfWeek === '*') {
-    return `毎日 ${time}`;
-  }
-
-  const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
-  const days = dayOfWeek.split(',').map((d) => dayNames[parseInt(d)] || d);
-  return `${days.join('・')} ${time}`;
-};
-
 onMounted(loadSchedules);
 </script>
 
@@ -223,50 +191,11 @@ onMounted(loadSchedules);
                   :key="schedule.id"
                   class="col-12 md:col-6 lg:col-4"
                 >
-                  <div class="surface-card border-round p-3 shadow-1 h-full">
-                    <div class="flex align-items-start justify-content-between mb-2">
-                      <div class="flex-1 min-w-0">
-                        <div class="font-semibold mb-1 white-space-nowrap overflow-hidden text-overflow-ellipsis" :class="{ 'text-color-secondary font-italic': !schedule.name }">
-                          {{ getScheduleDisplayName(schedule) }}
-                        </div>
-                        <div class="flex align-items-center gap-2 flex-wrap">
-                          <Tag
-                            :value="getApplianceTypeLabel(schedule.applianceType)"
-                            :severity="getApplianceTypeSeverity(schedule.applianceType)"
-                          />
-                          <span class="text-color-secondary text-sm">{{ schedule.applianceName }}</span>
-                        </div>
-                      </div>
-                      <div class="flex gap-1 flex-shrink-0">
-                        <Button
-                          icon="pi pi-pencil"
-                          severity="secondary"
-                          text
-                          rounded
-                          size="small"
-                          @click="editSchedule(schedule)"
-                        />
-                        <Button
-                          icon="pi pi-trash"
-                          severity="danger"
-                          text
-                          rounded
-                          size="small"
-                          @click="deleteSchedule(schedule)"
-                        />
-                      </div>
-                    </div>
-                    <div class="flex flex-column gap-2 text-sm mt-3">
-                      <div class="flex align-items-center gap-2">
-                        <i class="pi pi-send text-color-secondary"></i>
-                        <span>{{ formatScheduleAction(schedule) }}</span>
-                      </div>
-                      <div class="flex align-items-center gap-2">
-                        <i class="pi pi-clock text-color-secondary"></i>
-                        <span>{{ formatScheduleTime(schedule) }}</span>
-                      </div>
-                    </div>
-                  </div>
+                  <ScheduleCard
+                    :schedule="schedule"
+                    @edit="editSchedule"
+                    @delete="deleteSchedule"
+                  />
                 </div>
               </div>
             </TabPanel>
@@ -283,57 +212,13 @@ onMounted(loadSchedules);
                   :key="schedule.id"
                   class="col-12 md:col-6 lg:col-4"
                 >
-                  <div
-                    class="surface-card border-round p-3 shadow-1 h-full"
-                    :class="{ 'opacity-60': !schedule.isEnabled }"
-                  >
-                    <div class="flex align-items-start justify-content-between mb-2">
-                      <div class="flex align-items-center gap-2 flex-1 min-w-0">
-                        <ToggleSwitch
-                          :modelValue="schedule.isEnabled"
-                          @update:modelValue="toggleSchedule(schedule)"
-                        />
-                        <div class="font-semibold white-space-nowrap overflow-hidden text-overflow-ellipsis" :class="{ 'text-color-secondary font-italic': !schedule.name }">
-                          {{ getScheduleDisplayName(schedule) }}
-                        </div>
-                      </div>
-                      <div class="flex gap-1 flex-shrink-0">
-                        <Button
-                          icon="pi pi-pencil"
-                          severity="secondary"
-                          text
-                          rounded
-                          size="small"
-                          @click="editSchedule(schedule)"
-                        />
-                        <Button
-                          icon="pi pi-trash"
-                          severity="danger"
-                          text
-                          rounded
-                          size="small"
-                          @click="deleteSchedule(schedule)"
-                        />
-                      </div>
-                    </div>
-                    <div class="flex align-items-center gap-2 mb-2 pl-5">
-                      <Tag
-                        :value="getApplianceTypeLabel(schedule.applianceType)"
-                        :severity="getApplianceTypeSeverity(schedule.applianceType)"
-                      />
-                      <span class="text-color-secondary text-sm">{{ schedule.applianceName }}</span>
-                    </div>
-                    <div class="flex flex-column gap-2 text-sm pl-5">
-                      <div class="flex align-items-center gap-2">
-                        <i class="pi pi-send text-color-secondary"></i>
-                        <span>{{ formatScheduleAction(schedule) }}</span>
-                      </div>
-                      <div class="flex align-items-center gap-2">
-                        <i class="pi pi-clock text-color-secondary"></i>
-                        <span>{{ formatScheduleTime(schedule) }}</span>
-                      </div>
-                    </div>
-                  </div>
+                  <ScheduleCard
+                    :schedule="schedule"
+                    :show-toggle="true"
+                    @edit="editSchedule"
+                    @delete="deleteSchedule"
+                    @toggle="toggleSchedule"
+                  />
                 </div>
               </div>
             </TabPanel>
