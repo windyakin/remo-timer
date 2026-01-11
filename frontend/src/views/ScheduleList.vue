@@ -177,7 +177,7 @@ onMounted(loadSchedules);
               />
             </Tab>
           </TabList>
-          <TabPanels>
+          <TabPanels class="px-0">
             <TabPanel value="once">
               <div v-if="loading" class="text-center py-4">
                 <i class="pi pi-spin pi-spinner text-2xl"></i>

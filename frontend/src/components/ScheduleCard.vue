@@ -56,50 +56,34 @@ const parseCronToReadable = (cron: string): string => {
 
 <template>
   <div
-    class="surface-card border-round p-3 shadow-1 h-full"
+    class="schedule-card surface-card border-round p-3 shadow-1 h-full cursor-pointer hover:shadow-3 transition-all transition-duration-150 relative"
     :class="{ 'opacity-60': showToggle && !schedule.isEnabled }"
+    @click="emit('edit', schedule)"
   >
-    <div class="flex align-items-start justify-content-between mb-2">
-      <div class="flex align-items-center gap-2 flex-1 min-w-0">
-        <ToggleSwitch
-          v-if="showToggle"
-          :modelValue="schedule.isEnabled"
-          @update:modelValue="emit('toggle', schedule)"
-        />
-        <div
-          class="font-semibold white-space-nowrap overflow-hidden text-overflow-ellipsis"
-          :class="{ 'text-color-secondary font-italic': !schedule.name }"
-        >
-          {{ getScheduleDisplayName(schedule) }}
-        </div>
-      </div>
-      <div class="flex gap-1 flex-shrink-0">
-        <Button
-          icon="pi pi-pencil"
-          severity="secondary"
-          text
-          rounded
-          size="small"
-          @click="emit('edit', schedule)"
-        />
-        <Button
-          icon="pi pi-trash"
-          severity="danger"
-          text
-          rounded
-          size="small"
-          @click="emit('delete', schedule)"
-        />
-      </div>
+    <ToggleSwitch
+      v-if="showToggle"
+      :modelValue="schedule.isEnabled"
+      @update:modelValue="emit('toggle', schedule)"
+      @click.stop
+      class="absolute top-3 right-0 mr-3 mt-1"
+    />
+    <div
+      class="font-semibold white-space-nowrap overflow-hidden text-overflow-ellipsis mt-1 mb-3"
+      :class="[
+        { 'text-color-secondary font-italic': !schedule.name },
+        showToggle ? 'pr-6' : ''
+      ]"
+    >
+      {{ getScheduleDisplayName(schedule) }}
     </div>
-    <div class="flex align-items-center gap-2 mb-2" :class="{ 'pl-5': showToggle }">
+    <div class="flex align-items-center gap-2 mb-3">
       <Tag
         :value="getApplianceTypeLabel(schedule.applianceType)"
         :severity="getApplianceTypeSeverity(schedule.applianceType)"
       />
       <span class="text-color-secondary text-sm">{{ schedule.applianceName }}</span>
     </div>
-    <div class="flex flex-column gap-2 text-sm" :class="{ 'pl-5': showToggle }">
+    <div class="flex flex-column gap-2 text-sm mb-2">
       <div class="flex align-items-center gap-2">
         <i class="pi pi-send text-color-secondary"></i>
         <span>{{ formatScheduleAction(schedule) }}</span>
@@ -108,6 +92,16 @@ const parseCronToReadable = (cron: string): string => {
         <i class="pi pi-clock text-color-secondary"></i>
         <span>{{ formatScheduleTime(schedule) }}</span>
       </div>
+    </div>
+    <div class="flex justify-content-end">
+      <Button
+        icon="pi pi-trash"
+        severity="danger"
+        text
+        rounded
+        size="small"
+        @click.stop="emit('delete', schedule)"
+      />
     </div>
   </div>
 </template>

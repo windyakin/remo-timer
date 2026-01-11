@@ -29,7 +29,7 @@ const scheduleId = computed(() =>
   route.params.id ? parseInt(route.params.id as string) : null
 );
 
-const loading = ref(false);
+const loading = ref(!!route.params.id);
 const saving = ref(false);
 const appliances = ref<NatureAppliance[]>([]);
 
@@ -85,6 +85,7 @@ const loadSchedule = async () => {
     name.value = schedule.name || '';
     scheduleType.value = schedule.scheduleType;
     action.value = schedule.action;
+    actionLoaded.value = true;
 
     const appliance = appliances.value.find(
       (a) => a.id === schedule.applianceId
@@ -129,8 +130,16 @@ const loadSchedule = async () => {
   }
 };
 
-watch(selectedAppliance, (appliance) => {
+// 編集時にロード済みのアクションを保持するためのフラグ
+const actionLoaded = ref(false);
+
+watch(selectedAppliance, (appliance, oldAppliance) => {
   if (!appliance) return;
+
+  // 編集時に最初にapplianceがセットされたときは、ロード済みのactionを保持
+  if (isEdit.value && actionLoaded.value && !oldAppliance) {
+    return;
+  }
 
   if (appliance.type === 'AC') {
     action.value = {
@@ -182,6 +191,11 @@ const isValid = computed(() => {
   if (scheduleType.value === 'once' && !executeAt.value) return false;
   if (scheduleType.value === 'recurring' && selectedDays.value.length === 0)
     return false;
+
+  // アクションが正しく設定されているかチェック
+  if (action.value.type === 'IR' && !action.value.signal_id) return false;
+  if (action.value.type === 'TV' && !action.value.button) return false;
+  if (action.value.type === 'LIGHT' && !action.value.button) return false;
 
   return true;
 });
@@ -249,7 +263,11 @@ onMounted(async () => {
         {{ isEdit ? 'スケジュール編集' : '新規スケジュール' }}
       </template>
       <template #content>
-        <form @submit.prevent="save" class="form">
+        <div v-if="loading" class="text-center py-6">
+          <i class="pi pi-spin pi-spinner text-3xl"></i>
+          <p class="mt-3 text-color-secondary">読み込み中...</p>
+        </div>
+        <form v-else @submit.prevent="save" class="form">
           <div class="form-section">
             <label>スケジュール名 <span class="optional">(任意)</span></label>
             <InputText
