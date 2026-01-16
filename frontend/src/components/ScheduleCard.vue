@@ -7,6 +7,7 @@ import {
   formatScheduleAction,
   getApplianceTypeLabel,
   getApplianceTypeSeverity,
+  getApplianceTypeIcon,
 } from '@/utils/labels';
 
 defineProps<{
@@ -80,6 +81,7 @@ const parseCronToReadable = (cron: string): string => {
       <Tag
         :value="getApplianceTypeLabel(schedule.applianceType)"
         :severity="getApplianceTypeSeverity(schedule.applianceType)"
+        :icon="getApplianceTypeIcon(schedule.applianceType)"
       />
       <span class="text-color-secondary text-sm">{{ schedule.applianceName }}</span>
     </div>

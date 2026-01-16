@@ -54,9 +54,7 @@ const closeMobileMenu = () => {
         <Button
           class="md:hidden"
           icon="pi pi-bars"
-          severity="contrast"
-          text
-          rounded
+          severity="secondary"
           aria-label="メニュー"
           @click="mobileMenuOpen = true"
         />

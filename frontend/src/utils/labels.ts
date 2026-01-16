@@ -160,6 +160,14 @@ export const applianceTypeSeverities: Record<string, string> = {
   IR: 'secondary',
 };
 
+// デバイスタイプのアイコン
+export const applianceTypeIcons: Record<string, string> = {
+  AC: 'pi pi-gauge',
+  TV: 'pi pi-desktop',
+  LIGHT: 'pi pi-sun',
+  IR: 'pi pi-wifi',
+};
+
 // ラベル取得関数
 export function getAirconModeLabel(mode: string): string {
   return airconModeLabels[mode] || mode;
@@ -187,6 +195,10 @@ export function getApplianceTypeLabel(type: string): string {
 
 export function getApplianceTypeSeverity(type: string): string {
   return applianceTypeSeverities[type] || 'secondary';
+}
+
+export function getApplianceTypeIcon(type: string): string {
+  return applianceTypeIcons[type] || 'pi pi-box';
 }
 
 // アクションを日本語で表示

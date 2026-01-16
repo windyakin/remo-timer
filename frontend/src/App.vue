@@ -13,7 +13,7 @@ import ConfirmDialog from 'primevue/confirmdialog';
         <RouterView />
       </div>
     </main>
-    <Toast position="top-right" />
+    <Toast position="bottom-center" />
     <ConfirmDialog />
   </div>
 </template>
@@ -35,5 +35,19 @@ body {
 .container {
   max-width: 1200px;
   margin: 0 auto;
+}
+
+/* Toast のスマホ対応 */
+.p-toast {
+  max-width: calc(100vw - 2rem);
+  width: auto;
+}
+
+.p-toast .p-toast-message {
+  max-width: 100%;
+}
+
+.p-toast .p-toast-message-content {
+  word-break: break-word;
 }
 </style>

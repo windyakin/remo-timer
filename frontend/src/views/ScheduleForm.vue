@@ -18,7 +18,7 @@ import type {
   ApplianceAction,
   AirconAction,
 } from '@/types';
-import { getApplianceTypeLabel } from '@/utils/labels';
+import { getApplianceTypeLabel, getApplianceTypeIcon } from '@/utils/labels';
 
 const router = useRouter();
 const route = useRoute();
@@ -286,7 +286,21 @@ onMounted(async () => {
               optionValue="value"
               placeholder="デバイスを選択"
               class="w-full"
-            />
+            >
+              <template #value="slotProps">
+                <div v-if="slotProps.value" class="flex align-items-center gap-2">
+                  <i :class="getApplianceTypeIcon(slotProps.value.type)"></i>
+                  <span>{{ slotProps.value.nickname }}</span>
+                </div>
+                <span v-else>{{ slotProps.placeholder }}</span>
+              </template>
+              <template #option="slotProps">
+                <div class="flex align-items-center gap-2">
+                  <i :class="getApplianceTypeIcon(slotProps.option.value.type)"></i>
+                  <span>{{ slotProps.option.label }}</span>
+                </div>
+              </template>
+            </Select>
           </div>
 
           <div class="form-section" v-if="selectedAppliance">
