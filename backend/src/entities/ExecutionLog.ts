@@ -39,7 +39,7 @@ export class ExecutionLog {
   @Column({ type: 'varchar', length: 20 })
   status: ExecutionStatus;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'simple-json', nullable: true })
   response: object | null;
 
   @Column({ name: 'error_message', type: 'text', nullable: true })

@@ -28,13 +28,13 @@ export class Schedule {
   @Column({ name: 'appliance_type', type: 'varchar', length: 50 })
   applianceType: string;
 
-  @Column({ type: 'jsonb' })
+  @Column({ type: 'simple-json' })
   action: ApplianceAction;
 
   @Column({ name: 'schedule_type', type: 'varchar', length: 20 })
   scheduleType: ScheduleType;
 
-  @Column({ name: 'execute_at', type: 'timestamp', nullable: true })
+  @Column({ name: 'execute_at', type: 'datetime', nullable: true })
   executeAt: Date | null;
 
   @Column({ name: 'cron_expression', type: 'varchar', length: 100, nullable: true })

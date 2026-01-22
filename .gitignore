@@ -20,6 +20,10 @@ Thumbs.db
 *.log
 npm-debug.log*
 
+# Database
+*.sqlite
+*.sqlite3
+
 # Test coverage
 coverage/
 
