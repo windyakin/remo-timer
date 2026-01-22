@@ -1,8 +1,29 @@
 <script setup lang="ts">
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { RouterView } from 'vue-router';
 import AppHeader from '@/components/AppHeader.vue';
+import BottomNavigation from '@/components/BottomNavigation.vue';
 import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
+
+const windowWidth = ref(window.innerWidth);
+const MD_BREAKPOINT = 768;
+
+const toastPosition = computed(() =>
+  windowWidth.value >= MD_BREAKPOINT ? 'bottom-center' : 'top-center'
+);
+
+const handleResize = () => {
+  windowWidth.value = window.innerWidth;
+};
+
+onMounted(() => {
+  window.addEventListener('resize', handleResize);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize);
+});
 </script>
 
 <template>
@@ -13,7 +34,8 @@ import ConfirmDialog from 'primevue/confirmdialog';
         <RouterView />
       </div>
     </main>
-    <Toast position="bottom-center" />
+    <BottomNavigation class="md:hidden" />
+    <Toast :position="toastPosition" />
     <ConfirmDialog />
   </div>
 </template>
@@ -37,7 +59,19 @@ body {
   margin: 0 auto;
 }
 
-/* Toast のスマホ対応 */
+/* ヘッダー固定分の余白 */
+.main-content {
+  padding-top: 60px;
+}
+
+/* ボトムナビゲーション用の余白（モバイルのみ） */
+@media (max-width: 767px) {
+  .main-content {
+    padding-bottom: calc(70px + env(safe-area-inset-bottom));
+  }
+}
+
+/* Toast のレスポンシブ対応 */
 .p-toast {
   max-width: calc(100vw - 2rem);
   width: auto;
@@ -50,4 +84,5 @@ body {
 .p-toast .p-toast-message-content {
   word-break: break-word;
 }
+
 </style>
