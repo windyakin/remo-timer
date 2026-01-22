@@ -38,8 +38,9 @@ export const api = {
     return request<NatureDevice[]>('/devices');
   },
 
-  getAppliances(): Promise<NatureAppliance[]> {
-    return request<NatureAppliance[]>('/appliances');
+  getAppliances(forceRefresh = false): Promise<NatureAppliance[]> {
+    const query = forceRefresh ? '?refresh=true' : '';
+    return request<NatureAppliance[]>(`/appliances${query}`);
   },
 
   getSchedules(): Promise<Schedule[]> {
@@ -109,5 +110,15 @@ export const api = {
     return request<LogsResponse>(
       `/logs/schedule/${scheduleId}?limit=${limit}&offset=${offset}`
     );
+  },
+
+  sendApplianceAction(
+    applianceId: string,
+    action: ApplianceAction
+  ): Promise<{ success: boolean }> {
+    return request<{ success: boolean }>(`/appliances/${applianceId}/action`, {
+      method: 'POST',
+      body: JSON.stringify(action),
+    });
   },
 };

@@ -1,7 +1,9 @@
 import { DataSource } from 'typeorm';
 import { Schedule } from '../entities/Schedule';
 import { ExecutionLog } from '../entities/ExecutionLog';
+import { ApplianceCache } from '../entities/ApplianceCache';
 import { InitialSchema1704844800000 } from '../migrations/1704844800000-InitialSchema';
+import { AddApplianceCache1704844800001 } from '../migrations/1704844800001-AddApplianceCache';
 import dotenv from 'dotenv';
 import path from 'path';
 
@@ -14,7 +16,7 @@ export const AppDataSource = new DataSource({
   database: dbPath,
   synchronize: false,
   logging: process.env.NODE_ENV === 'development',
-  entities: [Schedule, ExecutionLog],
-  migrations: [InitialSchema1704844800000],
+  entities: [Schedule, ExecutionLog, ApplianceCache],
+  migrations: [InitialSchema1704844800000, AddApplianceCache1704844800001],
   subscribers: [],
 });

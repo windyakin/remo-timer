@@ -4,11 +4,13 @@ import { useToast } from 'primevue/usetoast';
 import Card from 'primevue/card';
 import Tag from 'primevue/tag';
 import Button from 'primevue/button';
+import ToggleSwitch from 'primevue/toggleswitch';
 import { api } from '@/services/api';
-import type { NatureAppliance } from '@/types';
+import type { NatureAppliance, ApplianceAction } from '@/types';
 import {
   getApplianceTypeLabel,
   getApplianceTypeSeverity,
+  getApplianceTypeIcon,
   getAirconModeLabel,
 } from '@/utils/labels';
 
@@ -16,11 +18,14 @@ const toast = useToast();
 
 const appliances = ref<NatureAppliance[]>([]);
 const loading = ref(true);
+const togglingIds = ref<Set<string>>(new Set());
 
-const loadAppliances = async () => {
-  loading.value = true;
+const loadAppliances = async (showLoading = true, forceRefresh = false) => {
+  if (showLoading) {
+    loading.value = true;
+  }
   try {
-    appliances.value = await api.getAppliances();
+    appliances.value = await api.getAppliances(forceRefresh);
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -32,6 +37,9 @@ const loadAppliances = async () => {
     loading.value = false;
   }
 };
+
+// リフレッシュボタン押下時は強制更新
+const refreshAppliances = () => loadAppliances(true, true);
 
 const formatAirconSettings = (appliance: NatureAppliance): string => {
   if (appliance.type !== 'AC' || !appliance.settings) return '-';
@@ -49,6 +57,75 @@ const getCurrentState = (appliance: NatureAppliance): string => {
   return '-';
 };
 
+// デバイスの電源状態を取得（null = 不明）
+const getPowerState = (appliance: NatureAppliance): boolean | null => {
+  if (appliance.type === 'AC' && appliance.settings) {
+    return appliance.settings.button !== 'power-off';
+  }
+  if (appliance.type === 'LIGHT' && appliance.light) {
+    return appliance.light.state.power === 'on';
+  }
+  return null;
+};
+
+// 電源操作が可能かどうか
+const canTogglePower = (appliance: NatureAppliance): boolean => {
+  return getPowerState(appliance) !== null;
+};
+
+// 電源をトグル
+const togglePower = async (appliance: NatureAppliance) => {
+  const currentState = getPowerState(appliance);
+  if (currentState === null) return;
+
+  togglingIds.value.add(appliance.id);
+
+  try {
+    let action: ApplianceAction;
+
+    if (appliance.type === 'AC') {
+      if (currentState) {
+        // ONからOFFへ
+        action = { type: 'AC', button: 'power-off' };
+      } else {
+        // OFFからONへ（前回の設定で起動）
+        action = {
+          type: 'AC',
+          operation_mode: appliance.settings?.mode,
+          temperature: appliance.settings?.temp,
+          air_volume: appliance.settings?.vol,
+          air_direction: appliance.settings?.dir,
+        };
+      }
+    } else if (appliance.type === 'LIGHT') {
+      action = { type: 'LIGHT', button: currentState ? 'off' : 'on' };
+    } else {
+      return;
+    }
+
+    await api.sendApplianceAction(appliance.id, action);
+
+    toast.add({
+      severity: 'success',
+      summary: '操作完了',
+      detail: `${appliance.nickname}を${currentState ? 'OFF' : 'ON'}にしました`,
+      life: 2000,
+    });
+
+    // 状態を更新するためにサイレントリロード
+    await loadAppliances(false);
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'エラー',
+      detail: '操作に失敗しました',
+      life: 3000,
+    });
+  } finally {
+    togglingIds.value.delete(appliance.id);
+  }
+};
+
 onMounted(loadAppliances);
 </script>
 
@@ -64,7 +141,7 @@ onMounted(loadAppliances);
             text
             rounded
             size="small"
-            @click="loadAppliances"
+            @click="refreshAppliances"
             :loading="loading"
           />
         </div>
@@ -84,11 +161,20 @@ onMounted(loadAppliances);
           >
             <div class="surface-card border-round p-3 shadow-1 h-full">
               <div class="flex align-items-center justify-content-between mb-3">
-                <div class="font-semibold text-lg">{{ appliance.nickname }}</div>
+                <div class="flex align-items-center gap-2">
                 <Tag
                   :value="getApplianceTypeLabel(appliance.type)"
                   :severity="getApplianceTypeSeverity(appliance.type)"
                 />
+                  <i :class="getApplianceTypeIcon(appliance.type)" class="text-color-secondary"></i>
+                  <span class="font-semibold text-lg">{{ appliance.nickname }}</span>
+                </div>
+                <span
+                  v-if="getPowerState(appliance) !== null"
+                  class="power-indicator"
+                  :class="getPowerState(appliance) ? 'power-on' : 'power-off'"
+                  :title="getPowerState(appliance) ? 'ON' : 'OFF'"
+                ></span>
               </div>
               <div class="flex flex-column gap-2 text-sm">
                 <div class="flex align-items-center gap-2">
@@ -102,6 +188,16 @@ onMounted(loadAppliances);
                 <div v-if="appliance.signals?.length > 0" class="flex align-items-center gap-2">
                   <i class="pi pi-send text-color-secondary" style="width: 1rem;"></i>
                   <span>カスタム信号: {{ appliance.signals.length }}件</span>
+                </div>
+              </div>
+              <div v-if="canTogglePower(appliance)" class="flex align-items-center justify-content-end mt-3 pt-3 border-top-1 surface-border">
+                <div class="flex align-items-center gap-2">
+                  <span class="text-sm text-color-secondary">電源</span>
+                  <ToggleSwitch
+                    :modelValue="getPowerState(appliance) ?? false"
+                    @update:modelValue="togglePower(appliance)"
+                    :disabled="togglingIds.has(appliance.id)"
+                  />
                 </div>
               </div>
             </div>
@@ -119,5 +215,21 @@ onMounted(loadAppliances);
 
 .grid > [class*='col'] {
   padding: 0.5rem;
+}
+
+.power-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.power-indicator.power-on {
+  background-color: #22c55e;
+  box-shadow: 0 0 2px #22c55e;
+}
+
+.power-indicator.power-off {
+  background-color: #9ca3af;
 }
 </style>
