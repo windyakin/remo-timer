@@ -36,7 +36,12 @@ const appliances = ref<NatureAppliance[]>([]);
 const name = ref('');
 const selectedAppliance = ref<NatureAppliance | null>(null);
 const scheduleType = ref<ScheduleType>('once');
-const executeAt = ref<Date | null>(null);
+const getInitialDate = () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+};
+const executeAt = ref<Date | null>(getInitialDate());
 const executeTime = ref<Date | null>(null);
 const selectedDays = ref<number[]>([]);
 const action = ref<ApplianceAction>({ type: 'AC' });
