@@ -9,17 +9,41 @@ import type {
 
 const API_BASE = '/api';
 
+// Token getter will be set by the auth composable
+let getAccessTokenSilently: (() => Promise<string>) | null = null;
+
+export function setAuthTokenGetter(getter: () => Promise<string>) {
+  getAccessTokenSilently = getter;
+}
+
 async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string>),
+  };
+
+  // Inject Authorization header if token getter is available
+  if (getAccessTokenSilently) {
+    try {
+      const token = await getAccessTokenSilently();
+      headers['Authorization'] = `Bearer ${token}`;
+    } catch (error) {
+      console.error('Failed to get access token:', error);
+      throw new Error('Authentication required');
+    }
+  }
+
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers,
   });
+
+  if (response.status === 401) {
+    throw new Error('Unauthorized - please log in again');
+  }
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));

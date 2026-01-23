@@ -8,6 +8,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@auth0/auth0-vue": "^2.5.0",
     "@primevue/themes": "^4.2.1",
     "primeflex": "^4.0.0",
     "primeicons": "^7.0.0",
