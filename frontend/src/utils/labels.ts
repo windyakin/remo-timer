@@ -146,7 +146,7 @@ export const lightButtonLabels: Record<string, string> = {
 
 // デバイスタイプのラベル
 export const applianceTypeLabels: Record<string, string> = {
-  AC: 'エアコン',
+  AC: '空調',
   TV: 'テレビ',
   LIGHT: '照明',
   IR: '赤外線',

@@ -165,16 +165,15 @@ onMounted(loadAppliances);
                 <Tag
                   :value="getApplianceTypeLabel(appliance.type)"
                   :severity="getApplianceTypeSeverity(appliance.type)"
+                  :icon="getApplianceTypeIcon(appliance.type)"
                 />
-                  <i :class="getApplianceTypeIcon(appliance.type)" class="text-color-secondary"></i>
                   <span class="font-semibold text-lg">{{ appliance.nickname }}</span>
                 </div>
-                <span
-                  v-if="getPowerState(appliance) !== null"
-                  class="power-indicator"
-                  :class="getPowerState(appliance) ? 'power-on' : 'power-off'"
-                  :title="getPowerState(appliance) ? 'ON' : 'OFF'"
-                ></span>
+                <ToggleSwitch
+                  :modelValue="getPowerState(appliance) ?? false"
+                  @update:modelValue="togglePower(appliance)"
+                  :disabled="togglingIds.has(appliance.id)"
+                />
               </div>
               <div class="flex flex-column gap-2 text-sm">
                 <div class="flex align-items-center gap-2">
@@ -188,16 +187,6 @@ onMounted(loadAppliances);
                 <div v-if="appliance.signals?.length > 0" class="flex align-items-center gap-2">
                   <i class="pi pi-send text-color-secondary" style="width: 1rem;"></i>
                   <span>カスタム信号: {{ appliance.signals.length }}件</span>
-                </div>
-              </div>
-              <div v-if="canTogglePower(appliance)" class="flex align-items-center justify-content-end mt-3 pt-3 border-top-1 surface-border">
-                <div class="flex align-items-center gap-2">
-                  <span class="text-sm text-color-secondary">電源</span>
-                  <ToggleSwitch
-                    :modelValue="getPowerState(appliance) ?? false"
-                    @update:modelValue="togglePower(appliance)"
-                    :disabled="togglingIds.has(appliance.id)"
-                  />
                 </div>
               </div>
             </div>
@@ -215,21 +204,5 @@ onMounted(loadAppliances);
 
 .grid > [class*='col'] {
   padding: 0.5rem;
-}
-
-.power-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.power-indicator.power-on {
-  background-color: #22c55e;
-  box-shadow: 0 0 2px #22c55e;
-}
-
-.power-indicator.power-off {
-  background-color: #9ca3af;
 }
 </style>
