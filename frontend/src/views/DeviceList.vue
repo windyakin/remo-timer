@@ -68,11 +68,6 @@ const getPowerState = (appliance: NatureAppliance): boolean | null => {
   return null;
 };
 
-// 電源操作が可能かどうか
-const canTogglePower = (appliance: NatureAppliance): boolean => {
-  return getPowerState(appliance) !== null;
-};
-
 // 電源をトグル
 const togglePower = async (appliance: NatureAppliance) => {
   const currentState = getPowerState(appliance);

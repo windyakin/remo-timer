@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import morgan from 'morgan';
 import devicesRouter from './routes/devices';
 import schedulesRouter from './routes/schedules';
 import logsRouter from './routes/logs';
@@ -8,6 +9,7 @@ import { checkJwt, handleAuthError, AUTH_ENABLED } from './middleware/auth';
 const app = express();
 
 app.use(cors());
+app.use(morgan('combined'));
 app.use(express.json());
 
 // Health check endpoint - publicly accessible
