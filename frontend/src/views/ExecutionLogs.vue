@@ -75,9 +75,8 @@ onMounted(loadLogs);
           <Button
             icon="pi pi-refresh"
             severity="secondary"
-            text
+            variant="outlined"
             rounded
-            size="small"
             @click="loadLogs"
             :loading="loading"
           />
@@ -90,7 +89,7 @@ onMounted(loadLogs);
         <div v-else-if="logs.length === 0" class="text-center py-4 text-color-secondary">
           実行履歴がありません
         </div>
-        <div v-else class="flex flex-column gap-3">
+        <div v-else class="flex flex-column gap-3 mt-2">
           <div
             v-for="log in logs"
             :key="log.id"
