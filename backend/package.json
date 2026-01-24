@@ -13,11 +13,12 @@
     "migration:revert": "npm run typeorm -- migration:revert -d src/config/database.ts"
   },
   "dependencies": {
+    "better-sqlite3": "^11.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
+    "express-oauth2-jwt-bearer": "^1.7.3",
     "node-cron": "^3.0.3",
-    "better-sqlite3": "^11.0.0",
     "reflect-metadata": "^0.2.2",
     "typeorm": "^0.3.20"
   },
