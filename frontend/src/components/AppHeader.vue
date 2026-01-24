@@ -23,23 +23,24 @@ const isActive = (path: string) => {
       <div class="flex align-items-center justify-content-between py-3">
         <!-- Logo -->
         <h1 class="app-title flex align-items-center gap-2 m-0 text-xl md:text-2xl">
-          <i class="pi pi-home" style="font-size: 1.5rem"></i>
-          <span>Nature Remote Timer</span>
+          <span>Remo Timer</span>
         </h1>
 
-        <!-- Desktop Navigation -->
-        <nav class="nav hidden md:flex gap-2">
-          <RouterLink
-            v-for="item in navItems"
-            :key="item.path"
-            :to="item.path"
-            class="nav-link"
-            :class="{ active: isActive(item.path) }"
-          >
-            <i :class="item.icon"></i>
-            {{ item.label }}
-          </RouterLink>
-        </nav>
+        <!-- Desktop Navigation & User -->
+        <div class="hidden md:flex align-items-center gap-4">
+          <nav class="nav flex gap-2">
+            <RouterLink
+              v-for="item in navItems"
+              :key="item.path"
+              :to="item.path"
+              class="nav-link"
+              :class="{ active: isActive(item.path) }"
+            >
+              <i :class="item.icon"></i>
+              {{ item.label }}
+            </RouterLink>
+          </nav>
+        </div>
       </div>
     </div>
   </header>
@@ -52,7 +53,7 @@ const isActive = (path: string) => {
   left: 0;
   right: 0;
   z-index: 1000;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #0091ff 0%, #002fff 100%);
   color: white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
