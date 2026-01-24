@@ -150,7 +150,6 @@ onMounted(loadSchedules);
           <Button
             label="新規作成"
             icon="pi pi-plus"
-            size="small"
             @click="router.push('/schedules/new')"
           />
         </div>

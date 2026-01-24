@@ -1,5 +1,6 @@
 import { createApp } from 'vue';
 import PrimeVue from 'primevue/config';
+import { definePreset, palette } from '@primevue/themes';
 import Aura from '@primevue/themes/aura';
 import ToastService from 'primevue/toastservice';
 import ConfirmationService from 'primevue/confirmationservice';
@@ -11,6 +12,15 @@ import 'primeflex/primeflex.css';
 
 import App from './App.vue';
 import router from './router';
+
+// ヘッダー色に合わせたプライマリーカラーパレット
+const primaryPalette = palette('#0091ff');
+
+const AppTheme = definePreset(Aura, {
+  semantic: {
+    primary: primaryPalette,
+  },
+});
 
 const app = createApp(App);
 
@@ -33,7 +43,7 @@ if (AUTH_ENABLED) {
 app.use(router);
 app.use(PrimeVue, {
   theme: {
-    preset: Aura,
+    preset: AppTheme,
   },
   locale: {
     dayNames: ['日曜日', '月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'],

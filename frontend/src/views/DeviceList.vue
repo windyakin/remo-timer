@@ -138,9 +138,8 @@ onMounted(loadAppliances);
           <Button
             icon="pi pi-refresh"
             severity="secondary"
-            text
+            variant="outlined"
             rounded
-            size="small"
             @click="refreshAppliances"
             :loading="loading"
           />
@@ -153,7 +152,7 @@ onMounted(loadAppliances);
         <div v-else-if="appliances.length === 0" class="text-center py-4 text-color-secondary">
           デバイスがありません
         </div>
-        <div v-else class="grid">
+        <div v-else class="grid mt-2">
           <div
             v-for="appliance in appliances"
             :key="appliance.id"

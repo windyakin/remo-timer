@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import Card from 'primevue/card';
+import Fluid from 'primevue/fluid';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import SelectButton from 'primevue/selectbutton';
@@ -272,119 +273,117 @@ onMounted(async () => {
           <i class="pi pi-spin pi-spinner text-3xl"></i>
           <p class="mt-3 text-color-secondary">読み込み中...</p>
         </div>
-        <form v-else @submit.prevent="save" class="form">
-          <div class="form-section">
-            <label>スケジュール名 <span class="optional">(任意)</span></label>
-            <InputText
-              v-model="name"
-              placeholder="例: 朝のエアコンON"
-              class="w-full"
-            />
-          </div>
-
-          <div class="form-section">
-            <label>デバイス</label>
-            <Select
-              v-model="selectedAppliance"
-              :options="applianceOptions"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="デバイスを選択"
-              class="w-full"
-            >
-              <template #value="slotProps">
-                <div v-if="slotProps.value" class="flex align-items-center gap-2">
-                  <i :class="getApplianceTypeIcon(slotProps.value.type)"></i>
-                  <span>{{ slotProps.value.nickname }}</span>
-                </div>
-                <span v-else>{{ slotProps.placeholder }}</span>
-              </template>
-              <template #option="slotProps">
-                <div class="flex align-items-center gap-2">
-                  <i :class="getApplianceTypeIcon(slotProps.option.value.type)"></i>
-                  <span>{{ slotProps.option.label }}</span>
-                </div>
-              </template>
-            </Select>
-          </div>
-
-          <div class="form-section" v-if="selectedAppliance">
-            <label>アクション設定</label>
-            <div class="action-form-wrapper">
-              <AirconActionForm
-                v-if="selectedAppliance.type === 'AC'"
-                v-model="action as AirconAction"
-                :appliance="selectedAppliance"
-              />
-              <ButtonActionForm
-                v-else
-                v-model="action"
-                :appliance="selectedAppliance"
-              />
+        <Fluid v-else>
+          <form @submit.prevent="save" class="form mt-3">
+            <div class="form-section">
+              <label for="name">スケジュール名 (任意)</label>
+              <InputText id="name" v-model="name" placeholder="例: 朝のエアコンON" />
             </div>
-          </div>
 
-          <div class="form-section">
-            <label>スケジュールタイプ</label>
-            <SelectButton
-              v-model="scheduleType"
-              :options="scheduleTypeOptions"
-              optionLabel="label"
-              optionValue="value"
-            />
-          </div>
+            <div class="form-section">
+              <label for="appliance">デバイス</label>
+              <Select
+                id="appliance"
+                v-model="selectedAppliance"
+                :options="applianceOptions"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="デバイスを選択"
+              >
+                <template #value="slotProps">
+                  <div v-if="slotProps.value" class="flex align-items-center gap-2">
+                    <i :class="getApplianceTypeIcon(slotProps.value.type)"></i>
+                    <span>{{ slotProps.value.nickname }}</span>
+                  </div>
+                  <span v-else>{{ slotProps.placeholder }}</span>
+                </template>
+                <template #option="slotProps">
+                  <div class="flex align-items-center gap-2">
+                    <i :class="getApplianceTypeIcon(slotProps.option.value.type)"></i>
+                    <span>{{ slotProps.option.label }}</span>
+                  </div>
+                </template>
+              </Select>
+            </div>
 
-          <div class="form-section" v-if="scheduleType === 'once'">
-            <label>実行日</label>
-            <DatePicker
-              v-model="executeAt"
-              dateFormat="yy/mm/dd"
-              :minDate="new Date()"
-              placeholder="日付を選択"
-              class="w-full"
-            />
-          </div>
-
-          <div class="form-section" v-if="scheduleType === 'recurring'">
-            <label>繰り返す曜日</label>
-            <div class="day-checkboxes">
-              <div v-for="day in dayOptions" :key="day.value" class="day-item">
-                <Checkbox
-                  v-model="selectedDays"
-                  :value="day.value"
-                  :inputId="`day-${day.value}`"
+            <div class="form-section" v-if="selectedAppliance">
+              <label>アクション設定</label>
+              <div class="action-form-wrapper">
+                <AirconActionForm
+                  v-if="selectedAppliance.type === 'AC'"
+                  v-model="action as AirconAction"
+                  :appliance="selectedAppliance"
                 />
-                <label :for="`day-${day.value}`">{{ day.label }}</label>
+                <ButtonActionForm
+                  v-else
+                  v-model="action"
+                  :appliance="selectedAppliance"
+                />
               </div>
             </div>
-          </div>
 
-          <div class="form-section">
-            <label>実行時刻</label>
-            <DatePicker
-              v-model="executeTime"
-              timeOnly
-              hourFormat="24"
-              placeholder="時刻を選択"
-              class="w-full"
-            />
-          </div>
+            <div class="form-section">
+              <label>スケジュールタイプ</label>
+              <SelectButton
+                v-model="scheduleType"
+                :options="scheduleTypeOptions"
+                optionLabel="label"
+                optionValue="value"
+              />
+            </div>
 
-          <div class="form-actions">
-            <Button
-              type="button"
-              label="キャンセル"
-              severity="secondary"
-              @click="router.push('/')"
-            />
-            <Button
-              type="submit"
-              :label="isEdit ? '更新' : '作成'"
-              :loading="saving"
-              :disabled="!isValid"
-            />
-          </div>
-        </form>
+            <div class="form-section" v-if="scheduleType === 'once'">
+              <label for="executeAt">実行日</label>
+              <DatePicker
+                id="executeAt"
+                v-model="executeAt"
+                dateFormat="yy/mm/dd"
+                :minDate="new Date()"
+                placeholder="日付を選択"
+              />
+            </div>
+
+            <div class="form-section" v-if="scheduleType === 'recurring'">
+              <label>繰り返す曜日</label>
+              <div class="day-checkboxes">
+                <div v-for="day in dayOptions" :key="day.value" class="day-item">
+                  <Checkbox
+                    v-model="selectedDays"
+                    :value="day.value"
+                    :inputId="`day-${day.value}`"
+                  />
+                  <label :for="`day-${day.value}`">{{ day.label }}</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <label for="executeTime">実行時刻</label>
+              <DatePicker
+                id="executeTime"
+                v-model="executeTime"
+                timeOnly
+                hourFormat="24"
+                placeholder="時刻を選択"
+              />
+            </div>
+
+            <div class="form-actions">
+              <Button
+                type="button"
+                label="キャンセル"
+                severity="secondary"
+                @click="router.push('/')"
+              />
+              <Button
+                type="submit"
+                :label="isEdit ? '更新' : '作成'"
+                :loading="saving"
+                :disabled="!isValid"
+              />
+            </div>
+          </form>
+        </Fluid>
       </template>
     </Card>
   </div>
@@ -411,6 +410,7 @@ onMounted(async () => {
 .form-section > label {
   font-weight: 600;
   color: #374151;
+  font-size: 0.9rem;
 }
 
 .action-form-wrapper {
@@ -436,15 +436,5 @@ onMounted(async () => {
   justify-content: flex-end;
   gap: 12px;
   margin-top: 16px;
-}
-
-.w-full {
-  width: 100%;
-}
-
-.optional {
-  font-weight: normal;
-  color: #9ca3af;
-  font-size: 0.875rem;
 }
 </style>
