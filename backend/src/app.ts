@@ -4,7 +4,8 @@ import morgan from 'morgan';
 import devicesRouter from './routes/devices';
 import schedulesRouter from './routes/schedules';
 import logsRouter from './routes/logs';
-import { checkJwt, handleAuthError, AUTH_ENABLED } from './middleware/auth';
+import authRouter from './routes/auth';
+import { authMiddleware, checkAuth, handleAuthError, AUTH_ENABLED } from './middleware/auth';
 
 const app = express();
 
@@ -17,15 +18,17 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Apply JWT validation to all /api routes (only if auth is enabled)
-if (AUTH_ENABLED) {
-  app.use('/api', checkJwt);
-}
+// Apply Auth0 OIDC middleware for session management (only if auth is enabled)
+// This must be applied before routes to handle /api/auth/login, /api/auth/logout, /api/auth/callback
+app.use(authMiddleware);
 
-// Routes
-app.use('/api', devicesRouter);
-app.use('/api', schedulesRouter);
-app.use('/api', logsRouter);
+// Auth routes (status endpoint) - publicly accessible
+app.use('/api', authRouter);
+
+// Protected routes - require authentication
+app.use('/api', checkAuth, devicesRouter);
+app.use('/api', checkAuth, schedulesRouter);
+app.use('/api', checkAuth, logsRouter);
 
 // Auth error handler (only if auth is enabled)
 if (AUTH_ENABLED) {
