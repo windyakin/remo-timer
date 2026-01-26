@@ -1,13 +1,51 @@
-import { createRouter, createWebHistory } from 'vue-router';
-import { authGuard } from '@auth0/auth0-vue';
-import { AUTH_ENABLED } from '@/config/auth';
+import { createRouter, createWebHistory, type NavigationGuardNext, type RouteLocationNormalized } from 'vue-router';
+import { fetchStatus, status, isLoading } from '@/composables/useAuth';
 import ScheduleList from '@/views/ScheduleList.vue';
 import ScheduleForm from '@/views/ScheduleForm.vue';
 import DeviceList from '@/views/DeviceList.vue';
 import ExecutionLogs from '@/views/ExecutionLogs.vue';
 
-// 認証が有効な場合のみ authGuard を適用
-const optionalAuthGuard = AUTH_ENABLED ? authGuard : undefined;
+// Custom auth guard that uses BFF session-based auth
+const authGuard = async (
+  _to: RouteLocationNormalized,
+  _from: RouteLocationNormalized,
+  next: NavigationGuardNext
+) => {
+  // Wait for loading to complete if in progress
+  if (isLoading.value) {
+    // Wait for status to be fetched
+    await new Promise<void>((resolve) => {
+      const checkLoading = () => {
+        if (!isLoading.value) {
+          resolve();
+        } else {
+          setTimeout(checkLoading, 50);
+        }
+      };
+      checkLoading();
+    });
+  }
+
+  // If status hasn't been fetched yet, fetch it now
+  if (status.value === null) {
+    await fetchStatus();
+  }
+
+  // If auth is not enabled, allow access
+  if (!status.value?.authEnabled) {
+    next();
+    return;
+  }
+
+  // If authenticated, allow access
+  if (status.value?.isAuthenticated) {
+    next();
+    return;
+  }
+
+  // Not authenticated - redirect to login
+  window.location.href = '/api/auth/login';
+};
 
 const router = createRouter({
   history: createWebHistory(),
@@ -16,31 +54,31 @@ const router = createRouter({
       path: '/',
       name: 'schedules',
       component: ScheduleList,
-      beforeEnter: optionalAuthGuard,
+      beforeEnter: authGuard,
     },
     {
       path: '/schedules/new',
       name: 'schedule-new',
       component: ScheduleForm,
-      beforeEnter: optionalAuthGuard,
+      beforeEnter: authGuard,
     },
     {
       path: '/schedules/:id/edit',
       name: 'schedule-edit',
       component: ScheduleForm,
-      beforeEnter: optionalAuthGuard,
+      beforeEnter: authGuard,
     },
     {
       path: '/devices',
       name: 'devices',
       component: DeviceList,
-      beforeEnter: optionalAuthGuard,
+      beforeEnter: authGuard,
     },
     {
       path: '/logs',
       name: 'logs',
       component: ExecutionLogs,
-      beforeEnter: optionalAuthGuard,
+      beforeEnter: authGuard,
     },
   ],
 });
