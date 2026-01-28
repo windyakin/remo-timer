@@ -18,6 +18,8 @@ services:
       - "5173:80"
     environment:
       - BACKEND_HOST=backend:3000
+    volumes:
+      - ./frontend/default.conf.template:/etc/nginx/templates/default.conf.template
     depends_on:
       - backend
 

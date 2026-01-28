@@ -13,6 +13,5 @@ RUN npm run build -w frontend
 FROM nginx:latest
 
 COPY --from=builder /app/frontend/dist /usr/share/nginx/html
-COPY frontend/default.conf.template /etc/nginx/templates/default.conf.template
 
 EXPOSE 80
