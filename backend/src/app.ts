@@ -13,6 +13,8 @@ app.use(cors());
 app.use(morgan('combined'));
 app.use(express.json());
 
+app.set('trust proxy', process.env.TRUST_PROXY ? 1 : 0); // Trust first proxy
+
 // Health check endpoint - publicly accessible
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
