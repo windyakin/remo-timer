@@ -9,6 +9,9 @@ services:
       - .env
     volumes:
       - db_data:/data
+    depends_on:
+      migration:
+        condition: service_completed_successfully
 
   frontend:
     build:
@@ -22,6 +25,16 @@ services:
       - ./frontend/default.conf.template:/etc/nginx/templates/default.conf.template
     depends_on:
       - backend
+
+  migration:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: ["npm", "run", "migration:run:js"]
+    env_file:
+      - .env
+    volumes:
+      - db_data:/data
 
 volumes:
   db_data:
