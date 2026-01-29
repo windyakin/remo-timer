@@ -28,9 +28,16 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff,woff2}'],
+        // SPAのナビゲーションフォールバック
+        navigateFallback: 'index.html',
+        // /api/ パスはService Workerのナビゲーションハンドリングから除外
+        // これにより認証リダイレクト（/api/auth/login → Auth0）が正常に動作する
+        navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
-            urlPattern: /\/api\/.*/i,
+            // /api/auth/* 以外のAPIをキャッシュ
+            // 認証エンドポイントはリダイレクトを返すためキャッシュしない
+            urlPattern: /\/api\/(?!auth\/).*/i,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'backend-api-cache',
