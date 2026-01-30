@@ -43,26 +43,30 @@ npm run db:migrate:revert
 ### バックエンド (`backend/`)
 
 - **フレームワーク**: Express + TypeScript
-- **ORM**: TypeORM with SQLite
+- **ORM**: TypeORM with better-sqlite3
 - **スケジューラ**: node-cron（繰り返し）+ setTimeout（一度きり）
-- **認証**: express-oauth2-jwt-bearer (Auth0, オプション)
+- **認証**: express-openid-connect (Auth0 OIDC, オプション)
 
 主要ディレクトリ:
+- `src/config/` - DB接続設定、セッションストア
 - `src/entities/` - TypeORM エンティティ（Schedule, ExecutionLog, ApplianceCache）
-- `src/services/` - ビジネスロジック（NatureApiService, SchedulerService）
+- `src/services/` - ビジネスロジック（NatureApiService, SchedulerService, ApplianceCacheService）
 - `src/routes/` - API ルート定義
 - `src/migrations/` - DBマイグレーション
+- `src/middleware/` - 認証ミドルウェア
+- `src/types/` - 型定義（Nature API 型など）
 
 ### フロントエンド (`frontend/`)
 
 - **フレームワーク**: Vue 3 + TypeScript
 - **ビルド**: Vite
 - **UI**: PrimeVue (Aura テーマ) + PrimeFlex
-- **認証**: @auth0/auth0-vue (オプション)
+- **認証**: BFF パターン（バックエンド経由で OIDC 認証）
 
 主要ディレクトリ:
 - `src/views/` - ページコンポーネント
 - `src/components/` - 再利用可能コンポーネント
+- `src/composables/` - Vue Composables（useAuth など）
 - `src/services/api.ts` - API クライアント
 - `src/types/` - 型定義
 
@@ -82,16 +86,19 @@ npm run db:migrate:revert
 
 ### 環境変数
 - バックエンド: `.env` ファイル（`NATURE_API_TOKEN` が必須）
-- フロントエンド: `VITE_` プレフィックスの環境変数
+- 認証有効時は `AUTH_ENABLED=true` と Auth0 関連設定が必要
+- フロントエンド: 認証は BFF パターンのため環境変数不要
 
 ## データベース
 
-SQLite を使用。スキーマは TypeORM マイグレーションで管理。
+SQLite (better-sqlite3) を使用。スキーマは TypeORM マイグレーションで管理。
 
 テーブル:
 - `schedules` - スケジュール定義
 - `execution_logs` - 実行履歴
 - `appliance_cache` - 家電情報キャッシュ
+- `sessions` - OIDC セッション（認証有効時）
+- `app_metadata` - アプリケーションメタデータ（最終クリーンアップ時刻など）
 
 ## Docker
 

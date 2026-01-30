@@ -13,7 +13,7 @@ Nature Remo デバイスを使用した家電のスケジュール制御シス�
 - **実行ログ**
   - スケジュール実行履歴と結果の確認
 - **認証**
-  - Auth0 による JWT 認証（オプション）
+  - Auth0 による OIDC 認証（オプション、BFF パターン）
 
 ## 技術スタック
 
@@ -22,7 +22,7 @@ Nature Remo デバイスを使用した家電のスケジュール制御シス�
 | フロントエンド | Vue 3, TypeScript, PrimeVue, Vite |
 | バックエンド | Node.js, Express, TypeScript, TypeORM |
 | データベース | SQLite |
-| 認証 | Auth0 (オプション) |
+| 認証 | Auth0 OIDC + express-openid-connect (オプション) |
 | インフラ | Docker, Docker Compose, GitHub Actions |
 
 ## アーキテクチャ
@@ -41,6 +41,15 @@ Nature Remo デバイスを使用した家電のスケジュール制御シス�
 
 - 開発時: Vite の proxy 機能で `/api` をバックエンドへ転送
 - 本番時: Nginx でリバースプロキシ（`frontend/default.conf.template`）
+
+### 認証（オプション）
+
+BFF（Backend For Frontend）パターンを採用しています。
+
+- バックエンドが Auth0 との OIDC 認証を処理
+- セッションは SQLite に永続化
+- フロントエンドは `/api/auth/login`, `/api/auth/logout` へリダイレクトするだけ
+- クライアントシークレットはサーバーサイドで安全に管理
 
 ## セットアップ
 
@@ -96,18 +105,19 @@ docker-compose down
 | `NATURE_API_TOKEN` | Nature API トークン（必須） | - |
 | `SQLITE_PATH` | SQLite ファイルパス | `./data/database.sqlite` |
 | `PORT` | サーバーポート | `3000` |
-| `AUTH_ENABLED` | Auth0 認証の有効化 | `false` |
-| `AUTH0_ISSUER_URL` | Auth0 発行者URL | - |
-| `AUTH0_AUDIENCE` | Auth0 オーディエンス | - |
+| `NODE_ENV` | 実行環境 | `development` |
+| `DB_LOGGING` | DB クエリログの有効化 | `false` |
+| `TRUST_PROXY` | プロキシ信頼設定（リバースプロキシ経由時に設定） | `false` |
+| `AUTH_ENABLED` | Auth0 OIDC 認証の有効化 | `false` |
+| `BASE_URL` | アプリケーションの外部 URL | `http://localhost:5173` |
+| `AUTH0_ISSUER_URL` | Auth0 発行者 URL（例: `https://xxx.auth0.com`） | - |
+| `AUTH0_CLIENT_ID` | Auth0 クライアント ID | - |
+| `AUTH0_CLIENT_SECRET` | Auth0 クライアントシークレット | - |
+| `SESSION_SECRET` | セッション暗号化キー | `development-secret-please-change` |
 
 ### フロントエンド
 
-| 変数 | 説明 | デフォルト |
-|------|------|-----------|
-| `VITE_AUTH_ENABLED` | Auth0 認証の有効化 | `false` |
-| `VITE_AUTH0_DOMAIN` | Auth0 ドメイン | - |
-| `VITE_AUTH0_CLIENT_ID` | Auth0 クライアントID | - |
-| `VITE_AUTH0_AUDIENCE` | Auth0 オーディエンス | - |
+フロントエンドは BFF（Backend For Frontend）パターンを採用しているため、認証関連の環境変数は不要です。認証はすべてバックエンド経由で行われます。
 
 ## npm スクリプト
 
@@ -141,16 +151,21 @@ docker-compose down
 remo-timer/
 ├── backend/                 # Express バックエンド
 │   ├── src/
+│   │   ├── config/          # DB・セッション設定
 │   │   ├── entities/        # TypeORM エンティティ
+│   │   ├── migrations/      # DB マイグレーション
 │   │   ├── services/        # ビジネスロジック
 │   │   ├── routes/          # API ルート
-│   │   └── middleware/      # 認証ミドルウェア
+│   │   ├── middleware/      # 認証ミドルウェア
+│   │   └── types/           # 型定義
 │   └── Dockerfile
 ├── frontend/                # Vue フロントエンド
 │   ├── src/
 │   │   ├── views/           # ページコンポーネント
 │   │   ├── components/      # 再利用コンポーネント
-│   │   └── services/        # API クライアント
+│   │   ├── composables/     # Vue Composables
+│   │   ├── services/        # API クライアント
+│   │   └── types/           # 型定義
 │   └── Dockerfile
 ├── docker-compose.yml
 └── .github/workflows/       # CI/CD
