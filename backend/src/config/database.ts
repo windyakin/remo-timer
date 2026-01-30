@@ -5,6 +5,7 @@ import { ApplianceCache } from '../entities/ApplianceCache';
 import { InitialSchema1704844800000 } from '../migrations/1704844800000-InitialSchema';
 import { AddApplianceCache1704844800001 } from '../migrations/1704844800001-AddApplianceCache';
 import { AddSessionTable1704844800002 } from '../migrations/1704844800002-AddSessionTable';
+import { AddAppMetadataTable1704844800003 } from '../migrations/1704844800003-AddAppMetadataTable';
 import dotenv from 'dotenv';
 import path from 'path';
 
@@ -19,6 +20,11 @@ export const AppDataSource = new DataSource({
   synchronize: false,
   logging: enableQueryLogging,
   entities: [Schedule, ExecutionLog, ApplianceCache],
-  migrations: [InitialSchema1704844800000, AddApplianceCache1704844800001, AddSessionTable1704844800002],
+  migrations: [
+    InitialSchema1704844800000,
+    AddApplianceCache1704844800001,
+    AddSessionTable1704844800002,
+    AddAppMetadataTable1704844800003,
+  ],
   subscribers: [],
 });
