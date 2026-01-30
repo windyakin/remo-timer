@@ -1,5 +1,6 @@
 import { auth, requiresAuth, ConfigParams } from 'express-openid-connect';
 import { Request, Response, NextFunction, RequestHandler } from 'express';
+import { SQLiteSessionStore } from '../config/sessionStore';
 
 // Auth0 認証の有効/無効を環境変数で制御
 export const AUTH_ENABLED = process.env.AUTH_ENABLED === 'true';
@@ -20,9 +21,10 @@ export const authConfig: ConfigParams = {
     callback: '/api/auth/callback',
   },
   session: {
-    absoluteDuration: 24 * 60 * 60, // 24時間
+    store: new SQLiteSessionStore(),
+    absoluteDuration: 7 * 24 * 60 * 60, // 1週間
     rolling: true, // アクティビティがあればセッション延長
-    rollingDuration: 60 * 60, // 1時間ごとにリフレッシュ
+    rollingDuration: 7 * 24 * 60 * 60, // 1週間
   },
 };
 
