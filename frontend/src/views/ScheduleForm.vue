@@ -7,7 +7,6 @@ import Fluid from 'primevue/fluid';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import SelectButton from 'primevue/selectbutton';
-import DatePicker from 'primevue/datepicker';
 import Checkbox from 'primevue/checkbox';
 import Button from 'primevue/button';
 import AirconActionForm from '@/components/AirconActionForm.vue';
@@ -51,6 +50,103 @@ const scheduleTypeOptions = [
   { label: '一度きり', value: 'once' },
   { label: '繰り返し', value: 'recurring' },
 ];
+
+// 日付入力用のcomputed (YYYY-MM-DD形式)
+const executeAtString = computed({
+  get: () => {
+    if (!executeAt.value) return '';
+    const d = executeAt.value;
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  },
+  set: (val: string) => {
+    if (!val) {
+      executeAt.value = null;
+      return;
+    }
+    const [year, month, day] = val.split('-').map(Number);
+    executeAt.value = new Date(year, month - 1, day);
+  },
+});
+
+// 時刻入力用のcomputed (HH:MM形式)
+const executeTimeString = computed({
+  get: () => {
+    if (!executeTime.value) return '';
+    const hours = String(executeTime.value.getHours()).padStart(2, '0');
+    const minutes = String(executeTime.value.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  },
+  set: (val: string) => {
+    if (!val) {
+      executeTime.value = null;
+      return;
+    }
+    const [hours, minutes] = val.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours, minutes, 0, 0);
+    executeTime.value = date;
+  },
+});
+
+// 今日の日付 (min属性用)
+const todayString = computed(() => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+});
+
+// 日付補助入力
+const setDateToToday = () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  executeAt.value = today;
+};
+
+const setDateToTomorrow = () => {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+  executeAt.value = tomorrow;
+};
+
+// 時刻補助入力
+const setTime = (hours: number, minutes: number = 0) => {
+  const date = new Date();
+  date.setHours(hours, minutes, 0, 0);
+  executeTime.value = date;
+};
+
+const adjustTimeByHour = (delta: number) => {
+  if (!executeTime.value) {
+    const date = new Date();
+    date.setHours(12, 0, 0, 0);
+    executeTime.value = date;
+    return;
+  }
+  const currentHours = executeTime.value.getHours();
+  const newHours = currentHours + delta;
+  if (newHours < 0 || newHours > 23) {
+    return;
+  }
+  const date = new Date(executeTime.value);
+  date.setHours(newHours);
+  executeTime.value = date;
+};
+
+const canDecreaseHour = computed(() => {
+  if (!executeTime.value) return true;
+  return executeTime.value.getHours() > 0;
+});
+
+const canIncreaseHour = computed(() => {
+  if (!executeTime.value) return true;
+  return executeTime.value.getHours() < 23;
+});
 
 const dayOptions = [
   { label: '日', value: 0 },
@@ -274,14 +370,14 @@ onMounted(async () => {
           <p class="mt-3 text-color-secondary">読み込み中...</p>
         </div>
         <Fluid v-else>
-          <form @submit.prevent="save" class="form mt-3">
-            <div class="form-section">
-              <label for="name">スケジュール名 (任意)</label>
+          <form @submit.prevent="save" class="flex flex-column gap-4 mt-3">
+            <div class="flex flex-column gap-2">
+              <label for="name" class="font-semibold">スケジュール名 (任意)</label>
               <InputText id="name" v-model="name" placeholder="例: 朝のエアコンON" />
             </div>
 
-            <div class="form-section">
-              <label for="appliance">デバイス</label>
+            <div class="flex flex-column gap-2">
+              <label for="appliance" class="font-semibold">デバイス</label>
               <Select
                 id="appliance"
                 v-model="selectedAppliance"
@@ -306,9 +402,9 @@ onMounted(async () => {
               </Select>
             </div>
 
-            <div class="form-section" v-if="selectedAppliance">
-              <label>アクション設定</label>
-              <div class="action-form-wrapper">
+            <div class="flex flex-column gap-2" v-if="selectedAppliance">
+              <label class="font-semibold">アクション設定</label>
+              <div class="p-3 surface-ground border-round">
                 <AirconActionForm
                   v-if="selectedAppliance.type === 'AC'"
                   v-model="action as AirconAction"
@@ -322,8 +418,8 @@ onMounted(async () => {
               </div>
             </div>
 
-            <div class="form-section">
-              <label>スケジュールタイプ</label>
+            <div class="flex flex-column gap-2">
+              <label class="font-semibold">スケジュールタイプ</label>
               <SelectButton
                 v-model="scheduleType"
                 :options="scheduleTypeOptions"
@@ -332,21 +428,24 @@ onMounted(async () => {
               />
             </div>
 
-            <div class="form-section" v-if="scheduleType === 'once'">
-              <label for="executeAt">実行日</label>
-              <DatePicker
+            <div class="flex flex-column gap-2" v-if="scheduleType === 'once'">
+              <label for="executeAt" class="font-semibold">実行日</label>
+              <InputText
                 id="executeAt"
-                v-model="executeAt"
-                dateFormat="yy/mm/dd"
-                :minDate="new Date()"
-                placeholder="日付を選択"
+                type="date"
+                v-model="executeAtString"
+                :min="todayString"
               />
+              <div class="flex gap-2">
+                <Button type="button" :fluid="false" label="今日" severity="secondary" size="small" class="flex-1" @click="setDateToToday" />
+                <Button type="button" :fluid="false" label="明日" severity="secondary" size="small" class="flex-1" @click="setDateToTomorrow" />
+              </div>
             </div>
 
-            <div class="form-section" v-if="scheduleType === 'recurring'">
-              <label>繰り返す曜日</label>
-              <div class="day-checkboxes">
-                <div v-for="day in dayOptions" :key="day.value" class="day-item">
+            <div class="flex flex-column gap-2" v-if="scheduleType === 'recurring'">
+              <label class="font-semibold">繰り返す曜日</label>
+              <div class="flex gap-3 flex-wrap">
+                <div v-for="day in dayOptions" :key="day.value" class="flex align-items-center gap-2">
                   <Checkbox
                     v-model="selectedDays"
                     :value="day.value"
@@ -357,18 +456,27 @@ onMounted(async () => {
               </div>
             </div>
 
-            <div class="form-section">
-              <label for="executeTime">実行時刻</label>
-              <DatePicker
-                id="executeTime"
-                v-model="executeTime"
-                timeOnly
-                hourFormat="24"
-                placeholder="時刻を選択"
-              />
+            <div class="flex flex-column gap-2">
+              <label for="executeTime" class="font-semibold">実行時刻</label>
+              <div class="flex gap-2 align-items-center">
+                <Button type="button" icon="pi pi-minus" severity="secondary" :disabled="!canDecreaseHour" @click="adjustTimeByHour(-1)" />
+                <InputText
+                  id="executeTime"
+                  type="time"
+                  v-model="executeTimeString"
+                  class="flex-grow-1"
+                />
+                <Button type="button" icon="pi pi-plus" severity="secondary" :disabled="!canIncreaseHour" @click="adjustTimeByHour(1)" />
+              </div>
+              <div class="flex gap-2">
+                <Button type="button" :fluid="false" label="朝" severity="secondary" size="small" class="flex-1" @click="setTime(7, 0)" />
+                <Button type="button" :fluid="false" label="昼" severity="secondary" size="small" class="flex-1" @click="setTime(12, 0)" />
+                <Button type="button" :fluid="false" label="夕方" severity="secondary" size="small" class="flex-1" @click="setTime(17, 0)" />
+                <Button type="button" :fluid="false" label="夜" severity="secondary" size="small" class="flex-1" @click="setTime(20, 0)" />
+              </div>
             </div>
 
-            <div class="form-actions">
+            <div class="flex justify-content-end gap-2 mt-3">
               <Button
                 type="button"
                 label="キャンセル"
@@ -393,48 +501,5 @@ onMounted(async () => {
 .schedule-form {
   max-width: 600px;
   margin: 0 auto;
-}
-
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.form-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.form-section > label {
-  font-weight: 600;
-  color: #374151;
-  font-size: 0.9rem;
-}
-
-.action-form-wrapper {
-  padding: 16px;
-  background: #f9fafb;
-  border-radius: 8px;
-}
-
-.day-checkboxes {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.day-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 16px;
 }
 </style>
