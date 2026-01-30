@@ -1,14 +1,14 @@
-import { Router, Request, Response } from 'express';
+import { Hono } from 'hono';
 import { AppDataSource } from '../config/database';
 import { ExecutionLog } from '../entities/ExecutionLog';
 
-const router = Router();
+const router = new Hono();
 
-router.get('/logs', async (req: Request, res: Response) => {
+router.get('/logs', async (c) => {
   try {
     const logRepository = AppDataSource.getRepository(ExecutionLog);
-    const limit = parseInt(req.query.limit as string) || 100;
-    const offset = parseInt(req.query.offset as string) || 0;
+    const limit = parseInt(c.req.query('limit') || '100');
+    const offset = parseInt(c.req.query('offset') || '0');
 
     const [logs, total] = await logRepository.findAndCount({
       relations: ['schedule'],
@@ -17,19 +17,19 @@ router.get('/logs', async (req: Request, res: Response) => {
       skip: offset,
     });
 
-    res.json({ logs, total, limit, offset });
+    return c.json({ logs, total, limit, offset });
   } catch (error) {
     console.error('Failed to fetch logs:', error);
-    res.status(500).json({ error: 'Failed to fetch logs' });
+    return c.json({ error: 'Failed to fetch logs' }, 500);
   }
 });
 
-router.get('/logs/schedule/:scheduleId', async (req: Request, res: Response) => {
+router.get('/logs/schedule/:scheduleId', async (c) => {
   try {
     const logRepository = AppDataSource.getRepository(ExecutionLog);
-    const scheduleId = parseInt(req.params.scheduleId);
-    const limit = parseInt(req.query.limit as string) || 50;
-    const offset = parseInt(req.query.offset as string) || 0;
+    const scheduleId = parseInt(c.req.param('scheduleId'));
+    const limit = parseInt(c.req.query('limit') || '50');
+    const offset = parseInt(c.req.query('offset') || '0');
 
     const [logs, total] = await logRepository.findAndCount({
       where: { scheduleId },
@@ -38,10 +38,10 @@ router.get('/logs/schedule/:scheduleId', async (req: Request, res: Response) => 
       skip: offset,
     });
 
-    res.json({ logs, total, limit, offset });
+    return c.json({ logs, total, limit, offset });
   } catch (error) {
     console.error('Failed to fetch logs for schedule:', error);
-    res.status(500).json({ error: 'Failed to fetch logs' });
+    return c.json({ error: 'Failed to fetch logs' }, 500);
   }
 });
 

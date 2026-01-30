@@ -1,10 +1,10 @@
-import { Router, Request, Response } from 'express';
+import { Hono } from 'hono';
 import { AppDataSource } from '../config/database';
 import { Schedule, ScheduleType } from '../entities/Schedule';
 import { schedulerService } from '../services/SchedulerService';
 import { ApplianceAction } from '../types/nature';
 
-const router = Router();
+const router = new Hono();
 
 interface CreateScheduleBody {
   name?: string;
@@ -17,55 +17,51 @@ interface CreateScheduleBody {
   cronExpression?: string;
 }
 
-router.get('/schedules', async (_req: Request, res: Response) => {
+router.get('/schedules', async (c) => {
   try {
     const scheduleRepository = AppDataSource.getRepository(Schedule);
     const schedules = await scheduleRepository.find({
       order: { createdAt: 'DESC' },
     });
-    res.json(schedules);
+    return c.json(schedules);
   } catch (error) {
     console.error('Failed to fetch schedules:', error);
-    res.status(500).json({ error: 'Failed to fetch schedules' });
+    return c.json({ error: 'Failed to fetch schedules' }, 500);
   }
 });
 
-router.get('/schedules/:id', async (req: Request, res: Response) => {
+router.get('/schedules/:id', async (c) => {
   try {
     const scheduleRepository = AppDataSource.getRepository(Schedule);
     const schedule = await scheduleRepository.findOne({
-      where: { id: parseInt(req.params.id) },
+      where: { id: parseInt(c.req.param('id')) },
     });
 
     if (!schedule) {
-      res.status(404).json({ error: 'Schedule not found' });
-      return;
+      return c.json({ error: 'Schedule not found' }, 404);
     }
 
-    res.json(schedule);
+    return c.json(schedule);
   } catch (error) {
     console.error('Failed to fetch schedule:', error);
-    res.status(500).json({ error: 'Failed to fetch schedule' });
+    return c.json({ error: 'Failed to fetch schedule' }, 500);
   }
 });
 
-router.post('/schedules', async (req: Request, res: Response) => {
+router.post('/schedules', async (c) => {
   try {
-    const body: CreateScheduleBody = req.body;
+    const body = await c.req.json<CreateScheduleBody>();
 
     if (!body.applianceId || !body.action || !body.scheduleType) {
-      res.status(400).json({ error: 'Missing required fields' });
-      return;
+      return c.json({ error: 'Missing required fields' }, 400);
     }
 
     if (body.scheduleType === 'once' && !body.executeAt) {
-      res.status(400).json({ error: 'executeAt is required for one-time schedules' });
-      return;
+      return c.json({ error: 'executeAt is required for one-time schedules' }, 400);
     }
 
     if (body.scheduleType === 'recurring' && !body.cronExpression) {
-      res.status(400).json({ error: 'cronExpression is required for recurring schedules' });
-      return;
+      return c.json({ error: 'cronExpression is required for recurring schedules' }, 400);
     }
 
     const scheduleRepository = AppDataSource.getRepository(Schedule);
@@ -83,26 +79,25 @@ router.post('/schedules', async (req: Request, res: Response) => {
     const savedSchedule = await scheduleRepository.save(schedule);
     schedulerService.addSchedule(savedSchedule);
 
-    res.status(201).json(savedSchedule);
+    return c.json(savedSchedule, 201);
   } catch (error) {
     console.error('Failed to create schedule:', error);
-    res.status(500).json({ error: 'Failed to create schedule' });
+    return c.json({ error: 'Failed to create schedule' }, 500);
   }
 });
 
-router.put('/schedules/:id', async (req: Request, res: Response) => {
+router.put('/schedules/:id', async (c) => {
   try {
     const scheduleRepository = AppDataSource.getRepository(Schedule);
     const schedule = await scheduleRepository.findOne({
-      where: { id: parseInt(req.params.id) },
+      where: { id: parseInt(c.req.param('id')) },
     });
 
     if (!schedule) {
-      res.status(404).json({ error: 'Schedule not found' });
-      return;
+      return c.json({ error: 'Schedule not found' }, 404);
     }
 
-    const body: Partial<CreateScheduleBody> = req.body;
+    const body = await c.req.json<Partial<CreateScheduleBody>>();
 
     if (body.name !== undefined) schedule.name = body.name || null;
     if (body.applianceId !== undefined) schedule.applianceId = body.applianceId;
@@ -120,46 +115,44 @@ router.put('/schedules/:id', async (req: Request, res: Response) => {
     const updatedSchedule = await scheduleRepository.save(schedule);
     schedulerService.addSchedule(updatedSchedule);
 
-    res.json(updatedSchedule);
+    return c.json(updatedSchedule);
   } catch (error) {
     console.error('Failed to update schedule:', error);
-    res.status(500).json({ error: 'Failed to update schedule' });
+    return c.json({ error: 'Failed to update schedule' }, 500);
   }
 });
 
-router.delete('/schedules/:id', async (req: Request, res: Response) => {
+router.delete('/schedules/:id', async (c) => {
   try {
     const scheduleRepository = AppDataSource.getRepository(Schedule);
-    const scheduleId = parseInt(req.params.id);
+    const scheduleId = parseInt(c.req.param('id'));
     const schedule = await scheduleRepository.findOne({
       where: { id: scheduleId },
     });
 
     if (!schedule) {
-      res.status(404).json({ error: 'Schedule not found' });
-      return;
+      return c.json({ error: 'Schedule not found' }, 404);
     }
 
     schedulerService.removeSchedule(scheduleId);
     await scheduleRepository.remove(schedule);
 
-    res.status(204).send();
+    return c.body(null, 204);
   } catch (error) {
     console.error('Failed to delete schedule:', error);
-    res.status(500).json({ error: 'Failed to delete schedule' });
+    return c.json({ error: 'Failed to delete schedule' }, 500);
   }
 });
 
-router.post('/schedules/:id/toggle', async (req: Request, res: Response) => {
+router.post('/schedules/:id/toggle', async (c) => {
   try {
     const scheduleRepository = AppDataSource.getRepository(Schedule);
     const schedule = await scheduleRepository.findOne({
-      where: { id: parseInt(req.params.id) },
+      where: { id: parseInt(c.req.param('id')) },
     });
 
     if (!schedule) {
-      res.status(404).json({ error: 'Schedule not found' });
-      return;
+      return c.json({ error: 'Schedule not found' }, 404);
     }
 
     schedule.isEnabled = !schedule.isEnabled;
@@ -171,10 +164,10 @@ router.post('/schedules/:id/toggle', async (req: Request, res: Response) => {
       schedulerService.removeSchedule(schedule.id);
     }
 
-    res.json(updatedSchedule);
+    return c.json(updatedSchedule);
   } catch (error) {
     console.error('Failed to toggle schedule:', error);
-    res.status(500).json({ error: 'Failed to toggle schedule' });
+    return c.json({ error: 'Failed to toggle schedule' }, 500);
   }
 });
 

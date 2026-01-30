@@ -4,7 +4,7 @@
 
 ## プロジェクト概要
 
-Remo Timer は Nature Remo デバイスを使用した家電スケジュール制御システムです。Vue 3 フロントエンドと Express バックエンドで構成されるフルスタック TypeScript アプリケーションです。
+Remo Timer は Nature Remo デバイスを使用した家電スケジュール制御システムです。Vue 3 フロントエンドと Hono バックエンドで構成されるフルスタック TypeScript アプリケーションです。
 
 ## 開発コマンド
 
@@ -42,10 +42,11 @@ npm run db:migrate:revert
 
 ### バックエンド (`backend/`)
 
-- **フレームワーク**: Express + TypeScript
+- **フレームワーク**: Hono + TypeScript
+- **ランタイム**: Node.js (@hono/node-server)
 - **ORM**: TypeORM with SQLite
 - **スケジューラ**: node-cron（繰り返し）+ setTimeout（一度きり）
-- **認証**: express-oauth2-jwt-bearer (Auth0, オプション)
+- **認証**: openid-client (Auth0, オプション)
 
 主要ディレクトリ:
 - `src/entities/` - TypeORM エンティティ（Schedule, ExecutionLog, ApplianceCache）

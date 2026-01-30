@@ -1,9 +1,8 @@
-import { Router, Request, Response } from 'express';
+import { Hono } from 'hono';
+import { AUTH_ENABLED, getLoginUrl, getLogoutUrl, handleCallback, handleLogout } from '../middleware/auth';
+import type { AuthVariables } from '../app';
 
-const router = Router();
-
-// AUTH_ENABLED は app.ts から渡される
-export const AUTH_ENABLED = process.env.AUTH_ENABLED === 'true';
+const router = new Hono<{ Variables: AuthVariables }>();
 
 interface AuthStatusResponse {
   authEnabled: boolean;
@@ -16,33 +15,67 @@ interface AuthStatusResponse {
 }
 
 // 認証状態を返すエンドポイント
-router.get('/auth/status', (req: Request, res: Response) => {
+router.get('/auth/status', (c) => {
   if (!AUTH_ENABLED) {
     const response: AuthStatusResponse = {
       authEnabled: false,
       isAuthenticated: false,
       user: null,
     };
-    res.json(response);
-    return;
+    return c.json(response);
   }
-
-  // express-openid-connect が req.oidc を設定する
-  const oidc = (req as Request & { oidc?: { isAuthenticated: () => boolean; user?: Record<string, unknown> } }).oidc;
 
   const response: AuthStatusResponse = {
     authEnabled: true,
-    isAuthenticated: oidc?.isAuthenticated() ?? false,
-    user: oidc?.user
-      ? {
-          name: oidc.user.name as string | undefined,
-          email: oidc.user.email as string | undefined,
-          picture: oidc.user.picture as string | undefined,
-        }
-      : null,
+    isAuthenticated: c.get('isAuthenticated') ?? false,
+    user: c.get('user') ?? null,
   };
 
-  res.json(response);
+  return c.json(response);
+});
+
+// ログインエンドポイント - Auth0 にリダイレクト
+router.get('/auth/login', async (c) => {
+  if (!AUTH_ENABLED) {
+    return c.json({ error: 'Authentication is not enabled' }, 400);
+  }
+
+  try {
+    const loginUrl = await getLoginUrl(c);
+    return c.redirect(loginUrl);
+  } catch (error) {
+    console.error('Failed to generate login URL:', error);
+    return c.json({ error: 'Failed to initiate login' }, 500);
+  }
+});
+
+// ログアウトエンドポイント
+router.get('/auth/logout', (c) => {
+  if (!AUTH_ENABLED) {
+    return c.json({ error: 'Authentication is not enabled' }, 400);
+  }
+
+  handleLogout(c);
+  const logoutUrl = getLogoutUrl();
+  return c.redirect(logoutUrl);
+});
+
+// OAuth コールバックエンドポイント
+router.get('/auth/callback', async (c) => {
+  if (!AUTH_ENABLED) {
+    return c.json({ error: 'Authentication is not enabled' }, 400);
+  }
+
+  const result = await handleCallback(c);
+
+  if (result.success) {
+    // 認証成功 - ホームページにリダイレクト
+    const baseUrl = process.env.BASE_URL || 'http://localhost:5173';
+    return c.redirect(baseUrl);
+  } else {
+    // 認証失敗
+    return c.json({ error: 'Authentication failed', message: result.error }, 401);
+  }
 });
 
 export default router;

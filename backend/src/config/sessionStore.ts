@@ -1,12 +1,17 @@
 import Database from 'better-sqlite3';
 import cron from 'node-cron';
 import path from 'path';
-import type { SessionStore } from 'express-openid-connect';
 
 const dbPath = process.env.SQLITE_PATH || path.join(__dirname, '../../data/database.sqlite');
 
-// express-openid-connect 互換のセッションストア
-// 必要なメソッド: get, set, destroy
+// セッションストアのインターフェース
+interface SessionStore {
+  get(sid: string, callback: (err: unknown, session: unknown | null) => void): void;
+  set(sid: string, session: unknown, callback?: (err?: unknown) => void): void;
+  destroy(sid: string, callback?: (err?: unknown) => void): void;
+}
+
+// SQLite ベースのセッションストア
 export class SQLiteSessionStore implements SessionStore {
   private db: Database.Database;
 
@@ -14,7 +19,7 @@ export class SQLiteSessionStore implements SessionStore {
     this.db = new Database(dbPath);
   }
 
-  get: SessionStore['get'] = (sid, callback) => {
+  get(sid: string, callback: (err: unknown, session: unknown | null) => void): void {
     try {
       const row = this.db
         .prepare("SELECT sess FROM sessions WHERE sid = ? AND expired > datetime('now')")
@@ -27,15 +32,16 @@ export class SQLiteSessionStore implements SessionStore {
         callback(null, null);
       }
     } catch (err) {
-      callback(err);
+      callback(err, null);
     }
-  };
+  }
 
-  set: SessionStore['set'] = (sid, session, callback) => {
+  set(sid: string, session: unknown, callback?: (err?: unknown) => void): void {
     try {
       const sess = JSON.stringify(session);
       // セッションの有効期限を計算（デフォルト1週間）
-      const maxAge = session?.cookie?.maxAge || 7 * 24 * 60 * 60 * 1000;
+      const sessionObj = session as { cookie?: { maxAge?: number } };
+      const maxAge = sessionObj?.cookie?.maxAge || 7 * 24 * 60 * 60 * 1000;
       const expired = new Date(Date.now() + maxAge).toISOString();
 
       this.db
@@ -49,16 +55,16 @@ export class SQLiteSessionStore implements SessionStore {
     } catch (err) {
       callback?.(err);
     }
-  };
+  }
 
-  destroy: SessionStore['destroy'] = (sid, callback) => {
+  destroy(sid: string, callback?: (err?: unknown) => void): void {
     try {
       this.db.prepare('DELETE FROM sessions WHERE sid = ?').run(sid);
       callback?.();
     } catch (err) {
       callback?.(err);
     }
-  };
+  }
 
   // 期限切れセッションを削除
   cleanup(): number {

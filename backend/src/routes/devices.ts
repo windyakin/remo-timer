@@ -1,64 +1,58 @@
-import { Router, Request, Response } from 'express';
+import { Hono } from 'hono';
 import { natureApiService } from '../services/NatureApiService';
 import { applianceCacheService } from '../services/ApplianceCacheService';
 import { ApplianceAction } from '../types/nature';
 
-const router = Router();
+const router = new Hono();
 
-router.get('/devices', async (_req: Request, res: Response) => {
+router.get('/devices', async (c) => {
   try {
     const devices = await natureApiService.getDevices();
-    res.json(devices);
+    return c.json(devices);
   } catch (error) {
     console.error('Failed to fetch devices:', error);
-    res.status(500).json({
+    return c.json({
       error: error instanceof Error ? error.message : 'Failed to fetch devices',
-    });
+    }, 500);
   }
 });
 
-router.get('/appliances', async (req: Request, res: Response) => {
+router.get('/appliances', async (c) => {
   try {
     // refresh=true クエリパラメータで強制更新
-    const forceRefresh = req.query.refresh === 'true';
+    const forceRefresh = c.req.query('refresh') === 'true';
     const appliances = await applianceCacheService.getAppliances(forceRefresh);
-    res.json(appliances);
+    return c.json(appliances);
   } catch (error) {
     console.error('Failed to fetch appliances:', error);
-    res.status(500).json({
-      error:
-        error instanceof Error ? error.message : 'Failed to fetch appliances',
-    });
+    return c.json({
+      error: error instanceof Error ? error.message : 'Failed to fetch appliances',
+    }, 500);
   }
 });
 
 // デバイスにアクションを送信
-router.post(
-  '/appliances/:id/action',
-  async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-      const action = req.body as ApplianceAction;
+router.post('/appliances/:id/action', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const action = await c.req.json<ApplianceAction>();
 
-      if (!action || !action.type) {
-        res.status(400).json({ error: 'Invalid action' });
-        return;
-      }
-
-      await natureApiService.executeAction(id, action);
-
-      // アクション実行後、キャッシュを無効化（次回取得時に更新される）
-      await applianceCacheService.invalidateCache();
-
-      res.json({ success: true });
-    } catch (error) {
-      console.error('Failed to execute action:', error);
-      res.status(500).json({
-        error:
-          error instanceof Error ? error.message : 'Failed to execute action',
-      });
+    if (!action || !action.type) {
+      return c.json({ error: 'Invalid action' }, 400);
     }
+
+    await natureApiService.executeAction(id, action);
+
+    // アクション実行後、キャッシュを無効化（次回取得時に更新される）
+    await applianceCacheService.invalidateCache();
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Failed to execute action:', error);
+    return c.json({
+      error: error instanceof Error ? error.message : 'Failed to execute action',
+    }, 500);
   }
-);
+});
 
 export default router;

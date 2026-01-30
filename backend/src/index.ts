@@ -3,12 +3,13 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+import { serve } from '@hono/node-server';
 import app from './app';
 import { AppDataSource } from './config/database';
 import { schedulerService } from './services/SchedulerService';
 import { startSessionCleanupJob } from './config/sessionStore';
 
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT || '3000', 10);
 
 async function main() {
   try {
@@ -28,8 +29,11 @@ async function main() {
     // セッションクリーンアップジョブを開始
     startSessionCleanupJob();
 
-    app.listen(PORT, () => {
-      console.log(`Server is running on http://localhost:${PORT}`);
+    serve({
+      fetch: app.fetch,
+      port: PORT,
+    }, (info) => {
+      console.log(`Server is running on http://localhost:${info.port}`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
