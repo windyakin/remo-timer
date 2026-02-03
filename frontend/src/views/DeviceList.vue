@@ -176,7 +176,7 @@ onMounted(loadData);
                 <i class="pi pi-wifi text-primary"></i>
                 <span class="font-semibold">{{ device.name }}</span>
               </div>
-              <div class="flex flex-wrap gap-3">
+              <div class="sensor-grid">
                 <!-- 温度 -->
                 <div v-if="device.newest_events?.te" class="sensor-item">
                   <div class="flex align-items-center gap-2">
@@ -299,6 +299,12 @@ onMounted(loadData);
 
 .grid > [class*='col'] {
   padding: 0.5rem;
+}
+
+.sensor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
 }
 
 .sensor-item {
