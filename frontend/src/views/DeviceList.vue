@@ -19,12 +19,10 @@ const toast = useToast();
 const appliances = ref<NatureAppliance[]>([]);
 const devices = ref<NatureDevice[]>([]);
 const loading = ref(true);
+const refreshing = ref(false);
 const togglingIds = ref<Set<string>>(new Set());
 
-const loadData = async (showLoading = true, forceRefresh = false) => {
-  if (showLoading) {
-    loading.value = true;
-  }
+const loadData = async (forceRefresh = false) => {
   try {
     // アプライアンスとデバイスを並列で取得
     const [appliancesData, devicesData] = await Promise.all([
@@ -45,8 +43,15 @@ const loadData = async (showLoading = true, forceRefresh = false) => {
   }
 };
 
-// リフレッシュボタン押下時は強制更新
-const refreshData = () => loadData(true, true);
+// リフレッシュボタン押下時は強制更新（ボタンのみローディング）
+const refreshData = async () => {
+  refreshing.value = true;
+  try {
+    await loadData(true);
+  } finally {
+    refreshing.value = false;
+  }
+};
 
 const formatAirconSettings = (appliance: NatureAppliance): string => {
   if (appliance.type !== 'AC' || !appliance.settings) return '-';
@@ -115,7 +120,7 @@ const togglePower = async (appliance: NatureAppliance) => {
     });
 
     // 状態を更新するためにサイレントリロード
-    await loadData(false);
+    await loadData();
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -151,21 +156,43 @@ const formatRelativeTime = (isoString: string): string => {
   return `${diffDays}日前`;
 };
 
+// 相対時間を数値と単位に分離（人感センサー用）
+const formatRelativeTimeShort = (isoString: string): { value: number; unit: string } => {
+  const date = new Date(isoString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffMins < 1) return { value: 0, unit: '分' };
+  if (diffMins < 60) return { value: diffMins, unit: '分' };
+  if (diffHours < 24) return { value: diffHours, unit: '時間' };
+  return { value: diffDays, unit: '日' };
+};
+
 onMounted(loadData);
 </script>
 
 <template>
   <div class="device-list">
     <!-- センサーデータ表示 -->
-    <Card v-if="!loading && devicesWithSensors.length > 0" class="mb-3">
+    <Card v-if="!loading && devicesWithSensors.length > 0" class="mb-4">
       <template #title>
-        <div class="flex align-items-center gap-2">
-          <i class="pi pi-chart-line"></i>
+        <div class="flex align-items-center justify-content-between">
           <span>センサー情報</span>
+          <Button
+            icon="pi pi-refresh"
+            severity="secondary"
+            variant="outlined"
+            rounded
+            @click="refreshData"
+            :loading="refreshing"
+          />
         </div>
       </template>
       <template #content>
-        <div class="grid">
+        <div class="grid mt-2">
           <div
             v-for="device in devicesWithSensors"
             :key="device.id"
@@ -181,43 +208,55 @@ onMounted(loadData);
                 <div v-if="device.newest_events?.te" class="sensor-item">
                   <div class="flex align-items-center gap-2">
                     <i class="pi pi-sun text-orange-500"></i>
-                    <span class="text-2xl font-bold">{{ device.newest_events.te.val.toFixed(1) }}</span>
-                    <span class="text-color-secondary">&deg;C</span>
+                    <div class="flex align-items-baseline gap-1">
+                      <span class="text-2xl font-bold">{{ device.newest_events.te.val.toFixed(1) }}</span>
+                      <span class="text-color-secondary">&deg;C</span>
+                  </div>
                   </div>
                   <div class="text-xs text-color-secondary mt-1">
-                    {{ formatRelativeTime(device.newest_events.te.created_at) }}
+                    温度 ({{ formatRelativeTime(device.newest_events.te.created_at) }})
                   </div>
                 </div>
                 <!-- 湿度 -->
                 <div v-if="device.newest_events?.hu" class="sensor-item">
                   <div class="flex align-items-center gap-2">
                     <i class="pi pi-cloud text-blue-500"></i>
-                    <span class="text-2xl font-bold">{{ device.newest_events.hu.val }}</span>
-                    <span class="text-color-secondary">%</span>
+                    <div class="flex align-items-baseline gap-1">
+                      <span class="text-2xl font-bold">{{ device.newest_events.hu.val.toFixed(1) }}</span>
+                      <span class="text-color-secondary">%</span>
+                    </div>
                   </div>
                   <div class="text-xs text-color-secondary mt-1">
-                    {{ formatRelativeTime(device.newest_events.hu.created_at) }}
+                    湿度 ({{ formatRelativeTime(device.newest_events.hu.created_at) }})
                   </div>
                 </div>
                 <!-- 照度 -->
                 <div v-if="device.newest_events?.il" class="sensor-item">
                   <div class="flex align-items-center gap-2">
                     <i class="pi pi-bolt text-yellow-500"></i>
-                    <span class="text-2xl font-bold">{{ device.newest_events.il.val.toFixed(0) }}</span>
-                    <span class="text-color-secondary">lx</span>
+                    <div class="flex align-items-baseline gap-1">
+                      <span class="text-2xl font-bold">{{ device.newest_events.il.val.toFixed(0) }}</span>
+                      <span class="text-color-secondary">%</span>
+                    </div>
                   </div>
                   <div class="text-xs text-color-secondary mt-1">
-                    {{ formatRelativeTime(device.newest_events.il.created_at) }}
+                    照度 ({{ formatRelativeTime(device.newest_events.il.created_at) }})
                   </div>
                 </div>
                 <!-- 人感センサー -->
                 <div v-if="device.newest_events?.mo" class="sensor-item">
                   <div class="flex align-items-center gap-2">
                     <i class="pi pi-user text-green-500"></i>
-                    <span class="text-sm">最終検知</span>
+                    <div class="flex align-items-baseline gap-1">
+                      <span>
+                        <span class="text-2xl font-bold">{{ formatRelativeTimeShort(device.newest_events.mo.created_at).value }}</span>
+                        <span class="text-xl font-bold">{{ formatRelativeTimeShort(device.newest_events.mo.created_at).unit }}</span>
+                      </span>
+                      <span class="text-color-secondary">前</span>
+                    </div>
                   </div>
                   <div class="text-xs text-color-secondary mt-1">
-                    {{ formatRelativeTime(device.newest_events.mo.created_at) }}
+                    人感センサー ({{ device.newest_events.mo.val === 1 ? '検知' : '未検知' }})
                   </div>
                 </div>
               </div>
@@ -237,7 +276,7 @@ onMounted(loadData);
             variant="outlined"
             rounded
             @click="refreshData"
-            :loading="loading"
+            :loading="refreshing"
           />
         </div>
       </template>
