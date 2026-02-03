@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import Card from 'primevue/card';
 import Tag from 'primevue/tag';
 import Button from 'primevue/button';
 import ToggleSwitch from 'primevue/toggleswitch';
 import { api } from '@/services/api';
-import type { NatureAppliance, ApplianceAction } from '@/types';
+import type { NatureAppliance, NatureDevice, ApplianceAction } from '@/types';
 import {
   getApplianceTypeLabel,
   getApplianceTypeSeverity,
@@ -121,11 +121,116 @@ const togglePower = async (appliance: NatureAppliance) => {
   }
 };
 
+// アプライアンスからユニークなデバイスを抽出
+const uniqueDevices = computed(() => {
+  const deviceMap = new Map<string, NatureDevice>();
+  for (const appliance of appliances.value) {
+    if (appliance.device && !deviceMap.has(appliance.device.id)) {
+      deviceMap.set(appliance.device.id, appliance.device);
+    }
+  }
+  return Array.from(deviceMap.values());
+});
+
+// センサーデータのあるデバイスのみ表示
+const devicesWithSensors = computed(() => {
+  return uniqueDevices.value.filter((device) => {
+    const events = device.newest_events;
+    return events && (events.te || events.hu || events.il || events.mo);
+  });
+});
+
+// タイムスタンプを相対時間でフォーマット
+const formatRelativeTime = (isoString: string): string => {
+  const date = new Date(isoString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffMins < 1) return 'たった今';
+  if (diffMins < 60) return `${diffMins}分前`;
+  if (diffHours < 24) return `${diffHours}時間前`;
+  return `${diffDays}日前`;
+};
+
 onMounted(loadAppliances);
 </script>
 
 <template>
   <div class="device-list">
+    <!-- センサーデータ表示 -->
+    <Card v-if="!loading && devicesWithSensors.length > 0" class="mb-3">
+      <template #title>
+        <div class="flex align-items-center gap-2">
+          <i class="pi pi-chart-line"></i>
+          <span>センサー情報</span>
+        </div>
+      </template>
+      <template #content>
+        <div class="grid">
+          <div
+            v-for="device in devicesWithSensors"
+            :key="device.id"
+            class="col-12 md:col-6 lg:col-4"
+          >
+            <div class="surface-card border-round p-3 shadow-1 h-full">
+              <div class="flex align-items-center gap-2 mb-3">
+                <i class="pi pi-wifi text-primary"></i>
+                <span class="font-semibold">{{ device.name }}</span>
+              </div>
+              <div class="flex flex-wrap gap-3">
+                <!-- 温度 -->
+                <div v-if="device.newest_events?.te" class="sensor-item">
+                  <div class="flex align-items-center gap-2">
+                    <i class="pi pi-sun text-orange-500"></i>
+                    <span class="text-2xl font-bold">{{ device.newest_events.te.val.toFixed(1) }}</span>
+                    <span class="text-color-secondary">&deg;C</span>
+                  </div>
+                  <div class="text-xs text-color-secondary mt-1">
+                    {{ formatRelativeTime(device.newest_events.te.created_at) }}
+                  </div>
+                </div>
+                <!-- 湿度 -->
+                <div v-if="device.newest_events?.hu" class="sensor-item">
+                  <div class="flex align-items-center gap-2">
+                    <i class="pi pi-cloud text-blue-500"></i>
+                    <span class="text-2xl font-bold">{{ device.newest_events.hu.val }}</span>
+                    <span class="text-color-secondary">%</span>
+                  </div>
+                  <div class="text-xs text-color-secondary mt-1">
+                    {{ formatRelativeTime(device.newest_events.hu.created_at) }}
+                  </div>
+                </div>
+                <!-- 照度 -->
+                <div v-if="device.newest_events?.il" class="sensor-item">
+                  <div class="flex align-items-center gap-2">
+                    <i class="pi pi-bolt text-yellow-500"></i>
+                    <span class="text-2xl font-bold">{{ device.newest_events.il.val.toFixed(0) }}</span>
+                    <span class="text-color-secondary">lx</span>
+                  </div>
+                  <div class="text-xs text-color-secondary mt-1">
+                    {{ formatRelativeTime(device.newest_events.il.created_at) }}
+                  </div>
+                </div>
+                <!-- 人感センサー -->
+                <div v-if="device.newest_events?.mo" class="sensor-item">
+                  <div class="flex align-items-center gap-2">
+                    <i class="pi pi-user text-green-500"></i>
+                    <span class="text-sm">最終検知</span>
+                  </div>
+                  <div class="text-xs text-color-secondary mt-1">
+                    {{ formatRelativeTime(device.newest_events.mo.created_at) }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+    </Card>
+
     <Card>
       <template #title>
         <div class="flex align-items-center justify-content-between">
@@ -198,5 +303,11 @@ onMounted(loadAppliances);
 
 .grid > [class*='col'] {
   padding: 0.5rem;
+}
+
+.sensor-item {
+  padding: 0.5rem 1rem;
+  background: var(--p-surface-100);
+  border-radius: 0.5rem;
 }
 </style>

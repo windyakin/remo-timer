@@ -1,10 +1,17 @@
+export interface SensorEvent {
+  val: number;
+  created_at: string;
+}
+
 export interface NatureDevice {
   id: string;
   name: string;
   firmware_version: string;
   newest_events: {
-    te?: { val: number; created_at: string };
-    hu?: { val: number; created_at: string };
+    te?: SensorEvent; // Temperature
+    hu?: SensorEvent; // Humidity
+    il?: SensorEvent; // Illuminance
+    mo?: SensorEvent; // Motion
   };
 }
 
