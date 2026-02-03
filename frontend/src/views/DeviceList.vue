@@ -17,15 +17,22 @@ import {
 const toast = useToast();
 
 const appliances = ref<NatureAppliance[]>([]);
+const devices = ref<NatureDevice[]>([]);
 const loading = ref(true);
 const togglingIds = ref<Set<string>>(new Set());
 
-const loadAppliances = async (showLoading = true, forceRefresh = false) => {
+const loadData = async (showLoading = true, forceRefresh = false) => {
   if (showLoading) {
     loading.value = true;
   }
   try {
-    appliances.value = await api.getAppliances(forceRefresh);
+    // アプライアンスとデバイスを並列で取得
+    const [appliancesData, devicesData] = await Promise.all([
+      api.getAppliances(forceRefresh),
+      api.getDevices(),
+    ]);
+    appliances.value = appliancesData;
+    devices.value = devicesData;
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -39,7 +46,7 @@ const loadAppliances = async (showLoading = true, forceRefresh = false) => {
 };
 
 // リフレッシュボタン押下時は強制更新
-const refreshAppliances = () => loadAppliances(true, true);
+const refreshData = () => loadData(true, true);
 
 const formatAirconSettings = (appliance: NatureAppliance): string => {
   if (appliance.type !== 'AC' || !appliance.settings) return '-';
@@ -108,7 +115,7 @@ const togglePower = async (appliance: NatureAppliance) => {
     });
 
     // 状態を更新するためにサイレントリロード
-    await loadAppliances(false);
+    await loadData(false);
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -121,20 +128,9 @@ const togglePower = async (appliance: NatureAppliance) => {
   }
 };
 
-// アプライアンスからユニークなデバイスを抽出
-const uniqueDevices = computed(() => {
-  const deviceMap = new Map<string, NatureDevice>();
-  for (const appliance of appliances.value) {
-    if (appliance.device && !deviceMap.has(appliance.device.id)) {
-      deviceMap.set(appliance.device.id, appliance.device);
-    }
-  }
-  return Array.from(deviceMap.values());
-});
-
 // センサーデータのあるデバイスのみ表示
 const devicesWithSensors = computed(() => {
-  return uniqueDevices.value.filter((device) => {
+  return devices.value.filter((device) => {
     const events = device.newest_events;
     return events && (events.te || events.hu || events.il || events.mo);
   });
@@ -155,7 +151,7 @@ const formatRelativeTime = (isoString: string): string => {
   return `${diffDays}日前`;
 };
 
-onMounted(loadAppliances);
+onMounted(loadData);
 </script>
 
 <template>
@@ -240,7 +236,7 @@ onMounted(loadAppliances);
             severity="secondary"
             variant="outlined"
             rounded
-            @click="refreshAppliances"
+            @click="refreshData"
             :loading="loading"
           />
         </div>
