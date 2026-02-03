@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import Card from 'primevue/card';
 import Tag from 'primevue/tag';
 import Button from 'primevue/button';
 import ToggleSwitch from 'primevue/toggleswitch';
 import { api } from '@/services/api';
-import type { NatureAppliance, ApplianceAction } from '@/types';
+import type { NatureAppliance, NatureDevice, ApplianceAction } from '@/types';
 import {
   getApplianceTypeLabel,
   getApplianceTypeSeverity,
@@ -17,15 +17,20 @@ import {
 const toast = useToast();
 
 const appliances = ref<NatureAppliance[]>([]);
+const devices = ref<NatureDevice[]>([]);
 const loading = ref(true);
+const refreshing = ref(false);
 const togglingIds = ref<Set<string>>(new Set());
 
-const loadAppliances = async (showLoading = true, forceRefresh = false) => {
-  if (showLoading) {
-    loading.value = true;
-  }
+const loadData = async (forceRefresh = false) => {
   try {
-    appliances.value = await api.getAppliances(forceRefresh);
+    // アプライアンスとデバイスを並列で取得
+    const [appliancesData, devicesData] = await Promise.all([
+      api.getAppliances(forceRefresh),
+      api.getDevices(),
+    ]);
+    appliances.value = appliancesData;
+    devices.value = devicesData;
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -38,8 +43,15 @@ const loadAppliances = async (showLoading = true, forceRefresh = false) => {
   }
 };
 
-// リフレッシュボタン押下時は強制更新
-const refreshAppliances = () => loadAppliances(true, true);
+// リフレッシュボタン押下時は強制更新（ボタンのみローディング）
+const refreshData = async () => {
+  refreshing.value = true;
+  try {
+    await loadData(true);
+  } finally {
+    refreshing.value = false;
+  }
+};
 
 const formatAirconSettings = (appliance: NatureAppliance): string => {
   if (appliance.type !== 'AC' || !appliance.settings) return '-';
@@ -108,7 +120,7 @@ const togglePower = async (appliance: NatureAppliance) => {
     });
 
     // 状態を更新するためにサイレントリロード
-    await loadAppliances(false);
+    await loadData();
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -121,11 +133,139 @@ const togglePower = async (appliance: NatureAppliance) => {
   }
 };
 
-onMounted(loadAppliances);
+// センサーデータのあるデバイスのみ表示
+const devicesWithSensors = computed(() => {
+  return devices.value.filter((device) => {
+    const events = device.newest_events;
+    return events && (events.te || events.hu || events.il || events.mo);
+  });
+});
+
+// タイムスタンプを相対時間でフォーマット
+const formatRelativeTime = (isoString: string): string => {
+  const date = new Date(isoString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffMins < 1) return 'たった今';
+  if (diffMins < 60) return `${diffMins}分前`;
+  if (diffHours < 24) return `${diffHours}時間前`;
+  return `${diffDays}日前`;
+};
+
+// 相対時間を数値と単位に分離（人感センサー用）
+const formatRelativeTimeShort = (isoString: string): { value: number; unit: string } => {
+  const date = new Date(isoString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffMins < 1) return { value: 0, unit: '分' };
+  if (diffMins < 60) return { value: diffMins, unit: '分' };
+  if (diffHours < 24) return { value: diffHours, unit: '時間' };
+  return { value: diffDays, unit: '日' };
+};
+
+onMounted(loadData);
 </script>
 
 <template>
   <div class="device-list">
+    <!-- センサーデータ表示 -->
+    <Card v-if="!loading && devicesWithSensors.length > 0" class="mb-4">
+      <template #title>
+        <div class="flex align-items-center justify-content-between">
+          <span>センサー情報</span>
+          <Button
+            icon="pi pi-refresh"
+            severity="secondary"
+            variant="outlined"
+            rounded
+            @click="refreshData"
+            :loading="refreshing"
+          />
+        </div>
+      </template>
+      <template #content>
+        <div class="grid mt-2">
+          <div
+            v-for="device in devicesWithSensors"
+            :key="device.id"
+            class="col-12 md:col-6 lg:col-4"
+          >
+            <div class="surface-card border-round p-3 shadow-1 h-full">
+              <div class="flex align-items-center gap-2 mb-3">
+                <i class="pi pi-wifi text-primary"></i>
+                <span class="font-semibold">{{ device.name }}</span>
+              </div>
+              <div class="sensor-grid">
+                <!-- 温度 -->
+                <div v-if="device.newest_events?.te" class="sensor-item">
+                  <div class="flex align-items-center gap-2">
+                    <i class="pi pi-sun text-orange-500"></i>
+                    <div class="flex align-items-baseline gap-1">
+                      <span class="text-2xl font-bold">{{ device.newest_events.te.val.toFixed(1) }}</span>
+                      <span class="text-color-secondary">&deg;C</span>
+                  </div>
+                  </div>
+                  <div class="text-xs text-color-secondary mt-1">
+                    温度 ({{ formatRelativeTime(device.newest_events.te.created_at) }})
+                  </div>
+                </div>
+                <!-- 湿度 -->
+                <div v-if="device.newest_events?.hu" class="sensor-item">
+                  <div class="flex align-items-center gap-2">
+                    <i class="pi pi-cloud text-blue-500"></i>
+                    <div class="flex align-items-baseline gap-1">
+                      <span class="text-2xl font-bold">{{ device.newest_events.hu.val.toFixed(1) }}</span>
+                      <span class="text-color-secondary">%</span>
+                    </div>
+                  </div>
+                  <div class="text-xs text-color-secondary mt-1">
+                    湿度 ({{ formatRelativeTime(device.newest_events.hu.created_at) }})
+                  </div>
+                </div>
+                <!-- 照度 -->
+                <div v-if="device.newest_events?.il" class="sensor-item">
+                  <div class="flex align-items-center gap-2">
+                    <i class="pi pi-bolt text-yellow-500"></i>
+                    <div class="flex align-items-baseline gap-1">
+                      <span class="text-2xl font-bold">{{ device.newest_events.il.val.toFixed(0) }}</span>
+                      <span class="text-color-secondary">%</span>
+                    </div>
+                  </div>
+                  <div class="text-xs text-color-secondary mt-1">
+                    照度 ({{ formatRelativeTime(device.newest_events.il.created_at) }})
+                  </div>
+                </div>
+                <!-- 人感センサー -->
+                <div v-if="device.newest_events?.mo" class="sensor-item">
+                  <div class="flex align-items-center gap-2">
+                    <i class="pi pi-user text-green-500"></i>
+                    <div class="flex align-items-baseline gap-1">
+                      <span>
+                        <span class="text-2xl font-bold">{{ formatRelativeTimeShort(device.newest_events.mo.created_at).value }}</span>
+                        <span class="text-xl font-bold">{{ formatRelativeTimeShort(device.newest_events.mo.created_at).unit }}</span>
+                      </span>
+                      <span class="text-color-secondary">前</span>
+                    </div>
+                  </div>
+                  <div class="text-xs text-color-secondary mt-1">
+                    人感センサー ({{ device.newest_events.mo.val === 1 ? '検知' : '未検知' }})
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+    </Card>
+
     <Card>
       <template #title>
         <div class="flex align-items-center justify-content-between">
@@ -135,8 +275,8 @@ onMounted(loadAppliances);
             severity="secondary"
             variant="outlined"
             rounded
-            @click="refreshAppliances"
-            :loading="loading"
+            @click="refreshData"
+            :loading="refreshing"
           />
         </div>
       </template>
@@ -198,5 +338,17 @@ onMounted(loadAppliances);
 
 .grid > [class*='col'] {
   padding: 0.5rem;
+}
+
+.sensor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+.sensor-item {
+  padding: 0.5rem 1rem;
+  background: var(--p-surface-100);
+  border-radius: 0.5rem;
 }
 </style>
