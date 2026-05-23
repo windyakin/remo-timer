@@ -10,7 +10,7 @@ RUN npm ci -w frontend
 COPY frontend ./frontend
 RUN npm run build -w frontend
 
-FROM nginx:latest
+FROM nginx:1.30
 
 COPY --from=builder /app/frontend/dist /usr/share/nginx/html
 
