@@ -21,6 +21,6 @@
     "setup": "npm install && npm run db:up && npm run db:migrate"
   },
   "devDependencies": {
-    "concurrently": "^9.0.1"
+    "concurrently": "^10.0.0"
   }
 }
