@@ -11,7 +11,7 @@ router.get('/logs', async (req: Request, res: Response) => {
     const offset = parseInt(req.query.offset as string) || 0;
 
     const [logs, total] = await logRepository.findAndCount({
-      relations: ['schedule'],
+      relations: { schedule: true },
       order: { executedAt: 'DESC' },
       take: limit,
       skip: offset,
