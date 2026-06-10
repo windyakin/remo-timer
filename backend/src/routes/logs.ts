@@ -24,7 +24,7 @@ router.get('/logs', async (req: Request, res: Response) => {
   }
 });
 
-router.get('/logs/schedule/:scheduleId', async (req: Request, res: Response) => {
+router.get('/logs/schedule/:scheduleId', async (req: Request<{ scheduleId: string }>, res: Response) => {
   try {
     const logRepository = AppDataSource.getRepository(ExecutionLog);
     const scheduleId = parseInt(req.params.scheduleId);
