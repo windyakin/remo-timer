@@ -30,7 +30,7 @@ router.get('/schedules', async (_req: Request, res: Response) => {
   }
 });
 
-router.get('/schedules/:id', async (req: Request, res: Response) => {
+router.get('/schedules/:id', async (req: Request<{ id: string }>, res: Response) => {
   try {
     const scheduleRepository = AppDataSource.getRepository(Schedule);
     const schedule = await scheduleRepository.findOne({
@@ -90,7 +90,7 @@ router.post('/schedules', async (req: Request, res: Response) => {
   }
 });
 
-router.put('/schedules/:id', async (req: Request, res: Response) => {
+router.put('/schedules/:id', async (req: Request<{ id: string }>, res: Response) => {
   try {
     const scheduleRepository = AppDataSource.getRepository(Schedule);
     const schedule = await scheduleRepository.findOne({
@@ -127,7 +127,7 @@ router.put('/schedules/:id', async (req: Request, res: Response) => {
   }
 });
 
-router.delete('/schedules/:id', async (req: Request, res: Response) => {
+router.delete('/schedules/:id', async (req: Request<{ id: string }>, res: Response) => {
   try {
     const scheduleRepository = AppDataSource.getRepository(Schedule);
     const scheduleId = parseInt(req.params.id);
@@ -150,7 +150,7 @@ router.delete('/schedules/:id', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/schedules/:id/toggle', async (req: Request, res: Response) => {
+router.post('/schedules/:id/toggle', async (req: Request<{ id: string }>, res: Response) => {
   try {
     const scheduleRepository = AppDataSource.getRepository(Schedule);
     const schedule = await scheduleRepository.findOne({

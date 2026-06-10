@@ -35,7 +35,7 @@ router.get('/appliances', async (req: Request, res: Response) => {
 // デバイスにアクションを送信
 router.post(
   '/appliances/:id/action',
-  async (req: Request, res: Response) => {
+  async (req: Request<{ id: string }>, res: Response) => {
     try {
       const { id } = req.params;
       const action = req.body as ApplianceAction;
