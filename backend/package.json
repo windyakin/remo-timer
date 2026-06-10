@@ -25,7 +25,7 @@
     "express-openid-connect": "^2.19.4",
     "express-session": "^1.19.0",
     "morgan": "^1.10.1",
-    "node-cron": "^3.0.3",
+    "node-cron": "^4.0.0",
     "reflect-metadata": "^0.2.2",
     "typeorm": "^0.3.20"
   },
