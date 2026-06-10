@@ -22,7 +22,7 @@
     "dotenv": "^17.0.0",
     "express": "^5.0.0",
     "express-oauth2-jwt-bearer": "^1.7.3",
-    "express-openid-connect": "^2.19.4",
+    "express-openid-connect": "^3.0.0",
     "express-session": "^1.19.0",
     "morgan": "^1.10.1",
     "node-cron": "^4.0.0",
