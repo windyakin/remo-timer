@@ -1,4 +1,4 @@
-FROM node:22 AS builder
+FROM node:26 AS builder
 
 WORKDIR /app
 
@@ -10,7 +10,7 @@ RUN npm ci -w backend
 COPY backend ./backend
 RUN npm run build -w backend
 
-FROM node:22
+FROM node:26
 
 WORKDIR /app
 
